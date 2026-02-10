@@ -11,6 +11,17 @@ interface VoiceInputProps {
   disabled: boolean;
 }
 
+// Map to ISO 639-1 for Whisper
+const WHISPER_LANG_MAP: Record<Language, string> = {
+  hi: 'hi',
+  ta: 'ta',
+  te: 'te',
+  mr: 'mr',
+  kn: 'kn',
+  bn: 'bn',
+  en: 'en',
+};
+
 export default function VoiceInput({
   onTranscript,
   language,
@@ -26,25 +37,10 @@ export default function VoiceInput({
       setTranscribeError(null);
 
       try {
-        const langConfig = SUPPORTED_LANGUAGES.find(
-          (l) => l.code === language
-        );
-        // Map to ISO 639-1 for Whisper
-        const whisperLangMap: Record<Language, string> = {
-          hi: 'hi',
-          ta: 'ta',
-          te: 'te',
-          mr: 'mr',
-          kn: 'kn',
-          bn: 'bn',
-          en: 'en',
-        };
-
         const formData = new FormData();
-        // Determine file extension from blob type
         const ext = blob.type.includes('webm') ? 'webm' : 'mp4';
         formData.append('audio', blob, `recording.${ext}`);
-        formData.append('language', whisperLangMap[language]);
+        formData.append('language', WHISPER_LANG_MAP[language]);
 
         const response = await fetch('/api/transcribe', {
           method: 'POST',
@@ -90,6 +86,7 @@ export default function VoiceInput({
   const error = recorderError || transcribeError;
 
   const langConfig = SUPPORTED_LANGUAGES.find((l) => l.code === language);
+
   const listeningLabel =
     language === 'hi'
       ? 'सुन रहे हैं...'
@@ -112,11 +109,11 @@ export default function VoiceInput({
         onClick={handleMicClick}
         disabled={disabled || isProcessingAny}
         className={`
-          w-16 h-16 rounded-full flex items-center justify-center
-          transition-all duration-200 active:scale-95
+          w-14 h-14 rounded-full flex items-center justify-center
+          transition-all duration-200 active:scale-95 shadow-sm
           ${
             isRecording
-              ? 'bg-emergency-500 animate-recording-pulse'
+              ? 'bg-emergency-500 animate-recording-pulse shadow-emergency-500/30 shadow-lg'
               : 'bg-teal-600 hover:bg-teal-700'
           }
           ${disabled || isProcessingAny ? 'opacity-50 cursor-not-allowed' : ''}
@@ -124,11 +121,11 @@ export default function VoiceInput({
         aria-label={isRecording ? 'Stop recording' : 'Start voice recording'}
       >
         {isProcessingAny ? (
-          // Spinner
           <svg
-            className="w-7 h-7 text-white animate-spin"
+            className="w-6 h-6 text-white animate-spin"
             viewBox="0 0 24 24"
             fill="none"
+            aria-hidden="true"
           >
             <circle
               className="opacity-25"
@@ -145,8 +142,7 @@ export default function VoiceInput({
             />
           </svg>
         ) : isRecording ? (
-          // Stop icon
-          <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+          <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path
               fillRule="evenodd"
               d="M4.5 7.5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-9a3 3 0 01-3-3v-9z"
@@ -154,8 +150,7 @@ export default function VoiceInput({
             />
           </svg>
         ) : (
-          // Mic icon
-          <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+          <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M8.25 4.5a3.75 3.75 0 117.5 0v8.25a3.75 3.75 0 11-7.5 0V4.5z" />
             <path d="M6 10.5a.75.75 0 01.75.75v1.5a5.25 5.25 0 1010.5 0v-1.5a.75.75 0 011.5 0v1.5a6.751 6.751 0 01-6 6.709v2.291h3a.75.75 0 010 1.5h-7.5a.75.75 0 010-1.5h3v-2.291a6.751 6.751 0 01-6-6.709v-1.5A.75.75 0 016 10.5z" />
           </svg>

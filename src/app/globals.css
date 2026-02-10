@@ -6,13 +6,30 @@
 
 @layer base {
   html {
-    font-size: 18px;
+    /* Responsive base font: 16px on mobile, 17px on tablets, 18px on desktop */
+    font-size: 16px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  @media (min-width: 640px) {
+    html {
+      font-size: 17px;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    html {
+      font-size: 18px;
+    }
   }
 
   body {
     @apply text-gray-800 leading-relaxed;
+    /* Prevent overscroll bounce on iOS */
+    overscroll-behavior: none;
   }
 }
 
@@ -56,6 +73,11 @@
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Safe area padding for notched devices */
+  .safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 }
 

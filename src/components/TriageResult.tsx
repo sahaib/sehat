@@ -1,10 +1,11 @@
 'use client';
 
-import { TriageResult as TriageResultType, Severity } from '@/types';
-import { SEVERITY_CONFIG, URGENCY_LABELS } from '@/lib/constants';
+import { TriageResult as TriageResultType, Severity, Language } from '@/types';
+import { SEVERITY_CONFIG, URGENCY_LABELS, SUPPORTED_LANGUAGES } from '@/lib/constants';
 
 interface TriageResultProps {
   result: TriageResultType;
+  language?: Language;
 }
 
 function SeverityBadge({ severity }: { severity: Severity }) {
@@ -13,8 +14,10 @@ function SeverityBadge({ severity }: { severity: Severity }) {
     <div
       className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-lg
                   ${config.bgColor} ${config.textColor} border ${config.borderColor}`}
+      role="status"
+      aria-label={`Severity: ${config.label}`}
     >
-      <span>{config.icon}</span>
+      <span aria-hidden="true">{config.icon}</span>
       <span>{config.label}</span>
     </div>
   );
@@ -25,9 +28,9 @@ function ConfidenceBar({ confidence }: { confidence: number }) {
   return (
     <div className="flex items-center gap-2 text-sm text-gray-500">
       <span>Confidence:</span>
-      <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden max-w-32">
+      <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden max-w-32" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
         <div
-          className="h-full bg-teal-500 rounded-full transition-all duration-500"
+          className="h-full bg-teal-500 rounded-full transition-all duration-700 ease-out"
           style={{ width: `${percent}%` }}
         />
       </div>
@@ -36,7 +39,7 @@ function ConfidenceBar({ confidence }: { confidence: number }) {
   );
 }
 
-function speakText(text: string, langCode: string = 'hi-IN') {
+function speakText(text: string, langCode: string = 'en-IN') {
   if ('speechSynthesis' in window) {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
@@ -46,7 +49,7 @@ function speakText(text: string, langCode: string = 'hi-IN') {
   }
 }
 
-export default function TriageResult({ result }: TriageResultProps) {
+export default function TriageResult({ result, language }: TriageResultProps) {
   const config = SEVERITY_CONFIG[result.severity];
   const urgencyLabel = URGENCY_LABELS[result.action_plan.urgency] || result.action_plan.urgency;
 
@@ -55,8 +58,22 @@ export default function TriageResult({ result }: TriageResultProps) {
     ...result.action_plan.first_aid,
   ].join('. ');
 
+  // Get the correct speech code for the selected language
+  const speechCode = SUPPORTED_LANGUAGES.find((l) => l.code === language)?.speechCode || 'en-IN';
+
+  // Only show emergency numbers for emergency and urgent severity
+  const showEmergencyNumbers =
+    (result.severity === 'emergency' || result.severity === 'urgent') &&
+    result.action_plan.emergency_numbers &&
+    result.action_plan.emergency_numbers.length > 0;
+
   return (
-    <div className={`severity-card ${config.bgColor} ${config.borderColor} w-full`}>
+    <div
+      className={`severity-card ${config.bgColor} ${config.borderColor} w-full`}
+      role="region"
+      aria-label={`Triage result: ${config.label}`}
+      aria-live="polite"
+    >
       {/* Header: Severity + Confidence */}
       <div className="flex flex-col gap-3 mb-4">
         <SeverityBadge severity={result.severity} />
@@ -65,7 +82,7 @@ export default function TriageResult({ result }: TriageResultProps) {
 
       {/* Urgency timeframe */}
       <div className={`text-base font-semibold ${config.textColor} mb-4 flex items-center gap-2`}>
-        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+        <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         {urgencyLabel}
@@ -79,15 +96,16 @@ export default function TriageResult({ result }: TriageResultProps) {
         <p className="text-lg font-medium text-gray-800">{result.action_plan.go_to}</p>
       </div>
 
-      {/* Emergency numbers */}
-      {result.action_plan.emergency_numbers && result.action_plan.emergency_numbers.length > 0 && (
+      {/* Emergency numbers — ONLY for emergency/urgent */}
+      {showEmergencyNumbers && (
         <div className="flex gap-2 mb-4">
-          {result.action_plan.emergency_numbers.map((num) => (
+          {result.action_plan.emergency_numbers!.map((num) => (
             <a
               key={num}
               href={`tel:${num}`}
               className="flex items-center gap-2 px-4 py-2 bg-emergency-600 text-white
-                         rounded-xl font-bold text-lg active:scale-95 transition-transform"
+                         rounded-xl font-bold text-lg active:scale-95 transition-transform
+                         shadow-md hover:bg-emergency-700"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                 <path
@@ -138,7 +156,7 @@ export default function TriageResult({ result }: TriageResultProps) {
           <ul className="space-y-1">
             {result.red_flags.map((flag, i) => (
               <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-                <span className="text-emergency-500 mt-1">&#8226;</span>
+                <span className="text-emergency-500 mt-1" aria-hidden="true">&#8226;</span>
                 {flag}
               </li>
             ))}
@@ -155,7 +173,7 @@ export default function TriageResult({ result }: TriageResultProps) {
           <ul className="space-y-1">
             {result.action_plan.do_not.map((item, i) => (
               <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-                <span className="text-emergency-500 font-bold">✕</span>
+                <span className="text-emergency-500 font-bold" aria-hidden="true">&#10005;</span>
                 {item}
               </li>
             ))}
@@ -165,9 +183,9 @@ export default function TriageResult({ result }: TriageResultProps) {
 
       {/* Read aloud button */}
       <button
-        onClick={() => speakText(actionPlanText)}
+        onClick={() => speakText(actionPlanText, speechCode)}
         className="flex items-center gap-2 text-sm text-teal-600 hover:text-teal-700
-                   font-medium transition-colors mt-2"
+                   font-medium transition-colors mt-2 active:scale-95"
       >
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
           <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 001.5 12c0 .898.121 1.768.35 2.595.341 1.24 1.518 1.905 2.659 1.905h1.93l4.5 4.5c.945.945 2.561.276 2.561-1.06V4.06zM18.584 5.106a.75.75 0 011.06 0c3.808 3.807 3.808 9.98 0 13.788a.75.75 0 01-1.06-1.06 8.25 8.25 0 000-11.668.75.75 0 010-1.06z" />

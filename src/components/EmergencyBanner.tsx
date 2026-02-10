@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { EmergencyDetection } from '@/types';
 import { EMERGENCY_NUMBERS } from '@/lib/constants';
 
@@ -10,11 +10,28 @@ interface EmergencyBannerProps {
 
 export default function EmergencyBanner({ detection }: EmergencyBannerProps) {
   const [dismissed, setDismissed] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Focus the primary action when banner appears
+  useEffect(() => {
+    if (!dismissed && dialogRef.current) {
+      const firstLink = dialogRef.current.querySelector('a');
+      if (firstLink instanceof HTMLElement) {
+        firstLink.focus();
+      }
+    }
+  }, [dismissed]);
 
   if (dismissed) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-emergency-600/95 animate-fade-in">
+    <div
+      ref={dialogRef}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-emergency-600/95 animate-fade-in"
+      role="alertdialog"
+      aria-modal="true"
+      aria-label="Emergency detected"
+    >
       <div className="max-w-md w-full mx-4 text-center space-y-6">
         {/* Pulsing emergency icon */}
         <div className="w-24 h-24 mx-auto rounded-full bg-white/20 flex items-center justify-center animate-recording-pulse">
@@ -24,6 +41,7 @@ export default function EmergencyBanner({ detection }: EmergencyBannerProps) {
             viewBox="0 0 24 24"
             stroke="currentColor"
             strokeWidth={2}
+            aria-hidden="true"
           >
             <path
               strokeLinecap="round"

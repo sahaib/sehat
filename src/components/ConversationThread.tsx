@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
 import { Message } from '@/types';
 
 interface ConversationThreadProps {
@@ -10,16 +9,10 @@ interface ConversationThreadProps {
 export default function ConversationThread({
   messages,
 }: ConversationThreadProps) {
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
   if (messages.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-3 w-full">
+    <div className="flex flex-col gap-3 w-full" role="log" aria-label="Conversation">
       {messages.map((msg) => (
         <div
           key={msg.id}
@@ -36,7 +29,6 @@ export default function ConversationThread({
           </div>
         </div>
       ))}
-      <div ref={bottomRef} />
     </div>
   );
 }

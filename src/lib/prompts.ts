@@ -127,7 +127,7 @@ Respond ONLY with a valid JSON object. No text before or after. The JSON must ma
     },
     "do_not": ["<dangerous practice to avoid, in ${languageLabel}>"],
     "first_aid": ["<safe immediate action, in ${languageLabel}>"],
-    "emergency_numbers": ["112", "108"]
+    "emergency_numbers": ["112", "108"] // ONLY for emergency/urgent severity. Use [] for routine/self_care.
   },
   "disclaimer": "<disclaimer in ${languageLabel} stating: This is AI-assisted triage guidance, not a medical diagnosis. Always consult a qualified healthcare provider. In emergency, call 112.>"
 }

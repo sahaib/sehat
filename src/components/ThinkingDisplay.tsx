@@ -11,25 +11,28 @@ export default function ThinkingDisplay({
   content,
   isThinking,
 }: ThinkingDisplayProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  // Collapsed by default — most users don't need to see raw reasoning
+  const [isExpanded, setIsExpanded] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isThinking && contentRef.current) {
+    if (isThinking && isExpanded && contentRef.current) {
       contentRef.current.scrollTop = contentRef.current.scrollHeight;
     }
-  }, [content, isThinking]);
+  }, [content, isThinking, isExpanded]);
 
   if (!content && !isThinking) return null;
 
   return (
-    <div className="w-full animate-fade-in">
+    <div className="w-full animate-fade-in" aria-live="polite">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="flex items-center gap-2 text-sm font-medium text-purple-600
-                   hover:text-purple-700 transition-colors mb-2 w-full"
+                   hover:text-purple-700 transition-colors mb-2 w-full group"
+        aria-expanded={isExpanded}
+        aria-controls="thinking-content"
       >
-        {/* Brain icon */}
+        {/* Brain/sparkle icon */}
         <svg
           className="w-4 h-4"
           viewBox="0 0 24 24"
@@ -45,7 +48,7 @@ export default function ThinkingDisplay({
         </svg>
 
         <span>
-          {isThinking ? 'Analyzing symptoms' : 'AI Reasoning'}
+          {isThinking ? 'Analyzing your symptoms' : 'View AI reasoning'}
         </span>
 
         {/* Thinking dots animation */}
@@ -59,7 +62,7 @@ export default function ThinkingDisplay({
 
         {/* Expand/collapse chevron */}
         <svg
-          className={`w-4 h-4 ml-auto transition-transform duration-200 ${
+          className={`w-4 h-4 ml-auto transition-transform duration-200 text-purple-400 group-hover:text-purple-600 ${
             isExpanded ? 'rotate-180' : ''
           }`}
           viewBox="0 0 24 24"
@@ -77,6 +80,7 @@ export default function ThinkingDisplay({
 
       {isExpanded && (
         <div
+          id="thinking-content"
           ref={contentRef}
           className="bg-purple-50 border border-purple-100 rounded-xl p-4
                      max-h-64 overflow-y-auto scrollbar-hide transition-all duration-300"

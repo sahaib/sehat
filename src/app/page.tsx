@@ -1,11 +1,12 @@
 'use client';
 
-import { useReducer, useCallback, useRef, useEffect } from 'react';
+import { useReducer, useCallback, useRef, useEffect, useState } from 'react';
 import {
   ConversationState,
   ConversationAction,
   StreamEvent,
   Message,
+  Language,
 } from '@/types';
 import { detectEmergency } from '@/lib/emergency-detector';
 import { MAX_FOLLOW_UPS } from '@/lib/constants';
@@ -22,6 +23,27 @@ import DisclaimerFooter from '@/components/DisclaimerFooter';
 function generateId(): string {
   return Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
 }
+
+// Welcome messages per language
+const WELCOME_GREETINGS: Record<Language, string> = {
+  hi: 'नमस्ते! कैसे हैं आप?',
+  ta: 'வணக்கம்! எப்படி இருக்கீர்கள்?',
+  te: 'నమస్కారం! ఎలా ఉన్నారు?',
+  mr: 'नमस्कार! कसे आहात?',
+  kn: 'ನಮಸ್ಕಾರ! ಹೇಗಿದ್ದೀರಿ?',
+  bn: 'নমস্কার! কেমন আছেন?',
+  en: 'Hello! How are you feeling?',
+};
+
+const WELCOME_SUBTITLES: Record<Language, string> = {
+  hi: 'अपने लक्षण बताएं — हम आपकी मदद करेंगे सही देखभाल तक पहुंचने में।',
+  ta: 'உங்கள் அறிகுறிகளை சொல்லுங்கள் — சரியான சிகிச்சைக்கு நாங்கள் வழிகாட்டுவோம்.',
+  te: 'మీ లక్షణాలను చెప్పండి — సరైన వైద్యానికి మేము మిమ్మల్ని మార్గదర్శనం చేస్తాము.',
+  mr: 'तुमची लक्षणे सांगा — योग्य उपचारापर्यंत पोहोचण्यात आम्ही मदत करू.',
+  kn: 'ನಿಮ್ಮ ರೋಗಲಕ್ಷಣಗಳನ್ನು ಹೇಳಿ — ಸರಿಯಾದ ಆರೈಕೆಗೆ ನಾವು ಮಾರ್ಗದರ್ಶನ ನೀಡುತ್ತೇವೆ.',
+  bn: 'আপনার উপসর্গগুলি বলুন — সঠিক চিকিৎসার দিকে আমরা আপনাকে গাইড করব।',
+  en: 'Tell us your symptoms — we\'ll help you understand the severity and guide you to the right care.',
+};
 
 const initialState: ConversationState = {
   sessionId: '',
@@ -141,19 +163,28 @@ function conversationReducer(
 }
 
 export default function Home() {
+  // Generate sessionId on client-side only to avoid SSR hydration mismatch
+  const [mounted, setMounted] = useState(false);
   const [state, dispatch] = useReducer(conversationReducer, {
     ...initialState,
-    sessionId: generateId(),
+    sessionId: '',
   });
 
+  useEffect(() => {
+    if (!mounted) {
+      setMounted(true);
+      dispatch({ type: 'RESET' });
+    }
+  }, [mounted]);
+
   const abortRef = useRef<AbortController | null>(null);
-  const mainRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll when content changes
   useEffect(() => {
-    if (mainRef.current) {
-      mainRef.current.scrollTo({
-        top: mainRef.current.scrollHeight,
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
         behavior: 'smooth',
       });
     }
@@ -189,10 +220,22 @@ export default function Home() {
         });
 
         if (!response.ok) {
-          throw new Error(`Server error: ${response.status}`);
+          // Read the error body for better error messages
+          let errorDetail = `${response.status}`;
+          try {
+            const errorBody = await response.text();
+            if (errorBody) errorDetail = `${response.status} ${errorBody}`;
+          } catch {
+            // ignore
+          }
+          throw new Error(`Something went wrong\n${errorDetail}`);
         }
 
-        const reader = response.body!.getReader();
+        if (!response.body) {
+          throw new Error('No response stream received. Please try again.');
+        }
+
+        const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
 
@@ -284,7 +327,7 @@ export default function Home() {
   const isInputDisabled = state.isStreaming || state.isThinking;
 
   return (
-    <main className="flex flex-col h-screen max-w-2xl mx-auto relative">
+    <main className="flex flex-col h-[100dvh] max-w-2xl mx-auto relative">
       {/* Emergency Banner Overlay */}
       {state.isEmergency && state.emergencyData && (
         <EmergencyBanner detection={state.emergencyData} />
@@ -293,12 +336,13 @@ export default function Home() {
       {/* Header */}
       <header className="flex-shrink-0 px-4 pt-4 pb-2 no-print">
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-full bg-teal-600 flex items-center justify-center">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-full bg-teal-600 flex items-center justify-center shadow-sm">
               <svg
                 className="w-6 h-6 text-white"
                 viewBox="0 0 24 24"
                 fill="currentColor"
+                aria-hidden="true"
               >
                 <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
               </svg>
@@ -311,9 +355,14 @@ export default function Home() {
           {hasConversation && (
             <button
               onClick={handleReset}
-              className="text-sm text-gray-400 hover:text-gray-600 transition-colors
-                         px-3 py-1.5 rounded-lg hover:bg-gray-100"
+              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-teal-700
+                         px-3 py-1.5 rounded-lg hover:bg-teal-50 border border-transparent
+                         hover:border-teal-200 transition-all duration-200"
+              aria-label="Start new conversation"
             >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" />
+              </svg>
               New
             </button>
           )}
@@ -330,7 +379,7 @@ export default function Home() {
 
       {/* Conversation Area */}
       <div
-        ref={mainRef}
+        ref={scrollRef}
         className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-hide"
       >
         {/* Welcome state */}
@@ -341,29 +390,16 @@ export default function Home() {
                 className="w-10 h-10 text-teal-600"
                 viewBox="0 0 24 24"
                 fill="currentColor"
+                aria-hidden="true"
               >
                 <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
               </svg>
             </div>
             <h2 className="text-2xl font-bold text-gray-700">
-              {state.language === 'hi'
-                ? 'नमस्ते! कैसे हैं आप?'
-                : state.language === 'ta'
-                  ? 'வணக்கம்! எப்படி இருக்கீர்கள்?'
-                  : state.language === 'te'
-                    ? 'నమస్కారం! ఎలా ఉన్నారు?'
-                    : state.language === 'mr'
-                      ? 'नमस्कार! कसे आहात?'
-                      : state.language === 'kn'
-                        ? 'ನಮಸ್ಕಾರ! ಹೇಗಿದ್ದೀರಿ?'
-                        : state.language === 'bn'
-                          ? 'নমস্কার! কেমন আছেন?'
-                          : 'Hello! How are you feeling?'}
+              {WELCOME_GREETINGS[state.language]}
             </h2>
             <p className="text-gray-400 max-w-sm text-base">
-              {state.language === 'hi'
-                ? 'अपने लक्षण बताएं — हम आपकी मदद करेंगे सही देखभाल तक पहुंचने में।'
-                : 'Tell us your symptoms — we\'ll help you understand the severity and guide you to the right care.'}
+              {WELCOME_SUBTITLES[state.language]}
             </p>
           </div>
         )}
@@ -394,7 +430,7 @@ export default function Home() {
         {/* Triage Result */}
         {showResult && state.currentResult && (
           <>
-            <TriageResult result={state.currentResult} />
+            <TriageResult result={state.currentResult} language={state.language} />
             <DoctorSummary
               summary={state.currentResult.action_plan.tell_doctor}
               severity={state.currentResult.severity}
@@ -405,12 +441,25 @@ export default function Home() {
 
         {/* Error display */}
         {state.error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm animate-fade-in">
-            <p className="font-medium mb-1">Something went wrong</p>
-            <p>{state.error}</p>
+          <div
+            className="bg-red-50 border border-red-200 rounded-2xl p-5 animate-fade-in"
+            role="alert"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mt-0.5">
+                <svg className="w-4 h-4 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-red-800 text-sm">Something went wrong</p>
+                <p className="text-red-600 text-sm mt-1 whitespace-pre-line break-words">{state.error}</p>
+              </div>
+            </div>
             <button
               onClick={handleReset}
-              className="mt-2 text-red-600 underline text-sm"
+              className="mt-4 w-full py-2.5 bg-red-600 text-white text-sm font-medium
+                         rounded-xl hover:bg-red-700 transition-colors active:scale-[0.98]"
             >
               Start over
             </button>
@@ -419,7 +468,7 @@ export default function Home() {
       </div>
 
       {/* Input Area (fixed at bottom) */}
-      <div className="flex-shrink-0 px-4 pb-4 pt-2 bg-gradient-to-t from-white via-white to-transparent no-print">
+      <div className="flex-shrink-0 px-4 pb-4 pt-2 bg-gradient-to-t from-white via-white to-transparent no-print safe-bottom">
         <div className="flex items-end gap-3">
           <div className="flex-1">
             <TextInput
