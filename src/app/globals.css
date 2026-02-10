@@ -1,0 +1,93 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-size: 18px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply text-gray-800 leading-relaxed;
+  }
+}
+
+@layer components {
+  .thinking-text {
+    @apply font-mono text-sm leading-relaxed text-purple-800;
+    word-break: break-word;
+  }
+
+  .severity-card {
+    @apply rounded-2xl border-2 p-5 shadow-lg animate-slide-up;
+  }
+
+  .chat-bubble {
+    @apply rounded-2xl px-4 py-3 max-w-[85%] animate-fade-in;
+  }
+
+  .chat-bubble-user {
+    @apply bg-teal-600 text-white ml-auto rounded-br-md;
+  }
+
+  .chat-bubble-assistant {
+    @apply bg-white text-gray-800 mr-auto rounded-bl-md shadow-sm border border-gray-100;
+  }
+
+  .btn-primary {
+    @apply bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-xl px-6 py-3
+           transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-emergency {
+    @apply bg-emergency-600 hover:bg-emergency-700 text-white font-bold rounded-xl px-8 py-4
+           text-xl transition-all duration-200 active:scale-95 animate-recording-pulse;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Loading shimmer gradient */
+.shimmer-bg {
+  background: linear-gradient(
+    90deg,
+    rgba(14, 116, 144, 0.05) 25%,
+    rgba(14, 116, 144, 0.12) 50%,
+    rgba(14, 116, 144, 0.05) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+/* Print styles */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .doctor-summary,
+  .doctor-summary * {
+    visibility: visible;
+  }
+  .doctor-summary {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 2rem;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
