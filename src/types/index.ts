@@ -31,6 +31,8 @@ export interface ActionPlan {
 }
 
 export interface TriageResult {
+  is_medical_query: boolean;
+  redirect_message?: string | null;
   severity: Severity;
   confidence: number;
   reasoning_summary: string;

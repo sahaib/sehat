@@ -65,13 +65,18 @@ export async function* streamTriage(
         // Parse the accumulated JSON response
         const result = parseTriageResult(textAccumulator);
         if (result) {
-          if (result.needs_follow_up && result.follow_up_question) {
-            yield {
-              type: 'follow_up',
-              question: result.follow_up_question,
-            };
+          // For non-medical queries, skip follow-up logic and yield result directly
+          if (result.is_medical_query === false) {
+            yield { type: 'result', data: result };
+          } else {
+            if (result.needs_follow_up && result.follow_up_question) {
+              yield {
+                type: 'follow_up',
+                question: result.follow_up_question,
+              };
+            }
+            yield { type: 'result', data: result };
           }
-          yield { type: 'result', data: result };
         } else {
           yield {
             type: 'error',

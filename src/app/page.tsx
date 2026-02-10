@@ -429,14 +429,25 @@ export default function Home() {
 
         {/* Triage Result */}
         {showResult && state.currentResult && (
-          <>
-            <TriageResult result={state.currentResult} language={state.language} />
-            <DoctorSummary
-              summary={state.currentResult.action_plan.tell_doctor}
-              severity={state.currentResult.severity}
-              symptoms={state.currentResult.symptoms_identified}
-            />
-          </>
+          state.currentResult.is_medical_query === false ? (
+            /* Non-medical query: show friendly redirect as assistant chat bubble */
+            <div className="flex justify-start animate-fade-in">
+              <div className="chat-bubble chat-bubble-assistant">
+                <p className="whitespace-pre-wrap text-base leading-relaxed">
+                  {state.currentResult.redirect_message}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <TriageResult result={state.currentResult} language={state.language} />
+              <DoctorSummary
+                summary={state.currentResult.action_plan.tell_doctor}
+                severity={state.currentResult.severity}
+                symptoms={state.currentResult.symptoms_identified}
+              />
+            </>
+          )
         )}
 
         {/* Error display */}
