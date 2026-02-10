@@ -469,14 +469,12 @@ export default function Home() {
 
       {/* Input Area (fixed at bottom) */}
       <div className="flex-shrink-0 px-4 pb-4 pt-2 bg-gradient-to-t from-white via-white to-transparent no-print safe-bottom">
-        <div className="flex items-end gap-3">
-          <div className="flex-1">
-            <TextInput
-              onSubmit={handleSubmit}
-              disabled={isInputDisabled}
-              language={state.language}
-            />
-          </div>
+        <div className="relative flex items-end gap-2">
+          <TextInput
+            onSubmit={handleSubmit}
+            disabled={isInputDisabled}
+            language={state.language}
+          />
           <VoiceInput
             onTranscript={handleSubmit}
             language={state.language}
