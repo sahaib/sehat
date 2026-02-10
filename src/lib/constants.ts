@@ -1,6 +1,6 @@
 import { Language, Severity } from '@/types';
 
-export const MODEL_ID = 'claude-opus-4-6-20250514';
+export const MODEL_ID = 'claude-opus-4-6';
 export const MAX_FOLLOW_UPS = 2;
 export const THINKING_BUDGET = 10000;
 
