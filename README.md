@@ -16,7 +16,8 @@ Sehat helps underserved populations understand symptom severity and get directed
 ## Features
 
 - **7 Indian Languages**: Hindi, Tamil, Telugu, Marathi, Kannada, Bengali, English
-- **Voice-First**: OpenAI Whisper for best-in-class multilingual speech-to-text
+- **Voice Conversation Mode**: Continuous hands-free loop — speak → transcribe → triage → TTS → auto-listen — like talking to a real first-responder
+- **Voice-First**: Sarvam AI Saarika for Indian-language STT, Sarvam Bulbul v3 for natural TTS
 - **Zero-Latency Emergency Detection**: Keyword matching in all 7 languages catches life-threatening emergencies before the AI processes
 - **Transparent AI Reasoning**: Watch Opus 4.6's extended thinking chain in real-time
 - **Bilingual Doctor Summary**: Printable summary in English + patient's language
@@ -34,6 +35,8 @@ User (Voice/Text) → Client Emergency Detection (<1ms)
               Claude Opus 4.6 (Extended Thinking)
                    ↓
               Streamed Response → Severity Card + Action Plan + Doctor Summary
+                   ↓
+        Voice Mode: TTS auto-speaks → auto-listens → loop continues
 ```
 
 **Key design decisions:**
@@ -48,8 +51,8 @@ User (Voice/Text) → Client Emergency Detection (<1ms)
 |-------|-----------|
 | Framework | Next.js 16 (App Router) |
 | AI Engine | Claude Opus 4.6 with Extended Thinking |
-| Voice Input | OpenAI Whisper API |
-| Voice Output | Browser SpeechSynthesis API |
+| Voice STT | Sarvam AI Saarika (Indian languages) |
+| Voice TTS | Sarvam AI Bulbul v3 (natural Indian-language speech) |
 | Styling | Tailwind CSS (mobile-first) |
 | Language | TypeScript (strict mode) |
 

@@ -56,6 +56,7 @@ export interface TriageRequest {
   language: Language;
   conversationHistory: Message[];
   sessionId: string;
+  inputMode?: 'text' | 'voice' | 'voice_conversation';
 }
 
 export interface TranscribeResponse {

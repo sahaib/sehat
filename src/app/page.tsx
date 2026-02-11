@@ -181,6 +181,7 @@ export default function Home() {
 
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputModeRef = useRef<'text' | 'voice' | 'voice_conversation'>('text');
 
   // Auto-scroll when content changes
   useEffect(() => {
@@ -217,6 +218,7 @@ export default function Home() {
             language: state.language,
             conversationHistory: state.messages,
             sessionId: state.sessionId,
+            inputMode: inputModeRef.current,
           }),
           signal: controller.signal,
         });
@@ -315,6 +317,21 @@ export default function Home() {
     },
     [state.language, state.messages, state.sessionId, state.followUpCount]
   );
+
+  const handleTextSubmit = useCallback((text: string) => {
+    inputModeRef.current = 'text';
+    handleSubmit(text);
+  }, [handleSubmit]);
+
+  const handleVoiceSubmit = useCallback((text: string) => {
+    inputModeRef.current = 'voice';
+    handleSubmit(text);
+  }, [handleSubmit]);
+
+  const handleVoiceConversationSubmit = useCallback((text: string) => {
+    inputModeRef.current = 'voice_conversation';
+    handleSubmit(text);
+  }, [handleSubmit]);
 
   const handleReset = useCallback(() => {
     abortRef.current?.abort();
@@ -526,7 +543,7 @@ export default function Home() {
         {isVoiceMode ? (
           <VoiceConversationMode
             language={state.language}
-            onTranscript={handleSubmit}
+            onTranscript={handleVoiceConversationSubmit}
             onExit={() => setIsVoiceMode(false)}
             textToSpeak={voiceTextToSpeak}
             isProcessing={state.isStreaming || state.isThinking}
@@ -534,13 +551,13 @@ export default function Home() {
         ) : (
           <div className="relative">
             <TextInput
-              onSubmit={handleSubmit}
+              onSubmit={handleTextSubmit}
               disabled={isInputDisabled}
               language={state.language}
               extraActions={
                 <>
                   <VoiceInput
-                    onTranscript={handleSubmit}
+                    onTranscript={handleVoiceSubmit}
                     language={state.language}
                     disabled={isInputDisabled}
                   />

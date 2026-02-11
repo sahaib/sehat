@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { TranscribeResponse } from '@/types';
+import { telemetry } from '@/lib/telemetry';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -7,6 +8,8 @@ export const dynamic = 'force-dynamic';
 const SARVAM_STT_URL = 'https://api.sarvam.ai/speech-to-text';
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
     const formData = await request.formData();
     const audioFile = formData.get('audio') as File | null;
@@ -51,6 +54,12 @@ export async function POST(request: NextRequest) {
     if (!sarvamResponse.ok) {
       const errorBody = await sarvamResponse.text();
       console.error('Sarvam STT error:', sarvamResponse.status, errorBody);
+      telemetry.recordTranscribe({
+        timestamp: startTime,
+        language: languageHint || 'unknown',
+        latencyMs: Date.now() - startTime,
+        success: false,
+      });
       return Response.json(
         { error: `Transcription failed: ${sarvamResponse.status}` },
         { status: 502 }
@@ -65,9 +74,22 @@ export async function POST(request: NextRequest) {
       confidence: 1.0,
     };
 
+    telemetry.recordTranscribe({
+      timestamp: startTime,
+      language: languageHint || 'unknown',
+      latencyMs: Date.now() - startTime,
+      success: !!response.text,
+    });
+
     return Response.json(response);
   } catch (error) {
     console.error('Transcription error:', error);
+    telemetry.recordTranscribe({
+      timestamp: startTime,
+      language: 'unknown',
+      latencyMs: Date.now() - startTime,
+      success: false,
+    });
     const message =
       error instanceof Error ? error.message : 'Transcription failed';
     return Response.json({ error: message }, { status: 500 });
