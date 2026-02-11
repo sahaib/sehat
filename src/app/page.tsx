@@ -9,7 +9,7 @@ import {
   Language,
 } from '@/types';
 import { detectEmergency } from '@/lib/emergency-detector';
-import { MAX_FOLLOW_UPS } from '@/lib/constants';
+import { MAX_FOLLOW_UPS, SUPPORTED_LANGUAGES } from '@/lib/constants';
 import LanguageSelector from '@/components/LanguageSelector';
 import TextInput from '@/components/TextInput';
 import ConversationThread from '@/components/ConversationThread';
@@ -19,6 +19,7 @@ import TriageResult from '@/components/TriageResult';
 import DoctorSummary from '@/components/DoctorSummary';
 import VoiceInput from '@/components/VoiceInput';
 import DisclaimerFooter from '@/components/DisclaimerFooter';
+import ReadAloudButton from '@/components/ReadAloudButton';
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
@@ -405,7 +406,7 @@ export default function Home() {
         )}
 
         {/* Messages */}
-        <ConversationThread messages={state.messages} />
+        <ConversationThread messages={state.messages} language={state.language} />
 
         {/* Thinking Display */}
         {(state.isThinking || state.thinkingContent) && (
@@ -436,6 +437,15 @@ export default function Home() {
                 <p className="whitespace-pre-wrap text-base leading-relaxed">
                   {state.currentResult.redirect_message}
                 </p>
+                {state.currentResult.redirect_message && (
+                  <div className="mt-2 pt-2 border-t border-gray-100">
+                    <ReadAloudButton
+                      text={state.currentResult.redirect_message}
+                      languageCode={SUPPORTED_LANGUAGES.find((l) => l.code === state.language)?.speechCode || 'en-IN'}
+                      size="sm"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           ) : (
