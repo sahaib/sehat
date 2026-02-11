@@ -1,25 +1,64 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 
 interface ThinkingDisplayProps {
   content: string;
   isThinking: boolean;
 }
 
+// Detect reasoning steps from thinking content
+function detectSteps(content: string): string[] {
+  const steps: string[] = [];
+  const patterns = [
+    { re: /symptom|लक्षण|அறிகுறி/i, label: 'Identifying symptoms' },
+    { re: /red.?flag|emergency|आपातकाल|danger/i, label: 'Screening red flags' },
+    { re: /sever|urgent|triage|गंभीर/i, label: 'Assessing severity' },
+    { re: /follow.?up|question|clarif/i, label: 'Considering follow-up' },
+    { re: /action.?plan|recommend|सलाह|care.?level/i, label: 'Forming action plan' },
+    { re: /doctor|hospital|PHC|clinic|अस्पताल/i, label: 'Determining care level' },
+  ];
+  for (const p of patterns) {
+    if (p.re.test(content)) steps.push(p.label);
+  }
+  return steps;
+}
+
 export default function ThinkingDisplay({
   content,
   isThinking,
 }: ThinkingDisplayProps) {
-  // Collapsed by default — most users don't need to see raw reasoning
   const [isExpanded, setIsExpanded] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
   const contentRef = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startTimeRef = useRef<number>(0);
 
+  // Auto-expand when thinking starts, track elapsed time
+  useEffect(() => {
+    if (isThinking) {
+      setIsExpanded(true);
+      startTimeRef.current = Date.now();
+      timerRef.current = setInterval(() => {
+        setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
+      }, 1000);
+    } else if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isThinking]);
+
+  // Auto-scroll when content updates
   useEffect(() => {
     if (isThinking && isExpanded && contentRef.current) {
       contentRef.current.scrollTop = contentRef.current.scrollHeight;
     }
   }, [content, isThinking, isExpanded]);
+
+  const steps = useMemo(() => detectSteps(content), [content]);
 
   if (!content && !isThinking) return null;
 
@@ -34,7 +73,7 @@ export default function ThinkingDisplay({
       >
         {/* Brain/sparkle icon */}
         <svg
-          className="w-4 h-4"
+          className={`w-4 h-4 ${isThinking ? 'animate-pulse' : ''}`}
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -48,8 +87,13 @@ export default function ThinkingDisplay({
         </svg>
 
         <span>
-          {isThinking ? 'Analyzing your symptoms' : 'View AI reasoning'}
+          {isThinking ? 'Opus 4.6 analyzing symptoms' : 'View AI reasoning'}
         </span>
+
+        {/* Elapsed time */}
+        {isThinking && elapsed > 0 && (
+          <span className="text-xs text-purple-400 tabular-nums">{elapsed}s</span>
+        )}
 
         {/* Thinking dots animation */}
         {isThinking && (
@@ -78,6 +122,23 @@ export default function ThinkingDisplay({
         </svg>
       </button>
 
+      {/* Reasoning step badges */}
+      {isExpanded && steps.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {steps.map((step, i) => (
+            <span
+              key={step}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium
+                         bg-purple-100/60 text-purple-700 animate-fade-in"
+              style={{ animationDelay: `${i * 100}ms` }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+              {step}
+            </span>
+          ))}
+        </div>
+      )}
+
       {isExpanded && (
         <div
           id="thinking-content"
@@ -86,9 +147,17 @@ export default function ThinkingDisplay({
                      max-h-64 overflow-y-auto scrollbar-hide animate-scale-in"
         >
           <pre className="thinking-text whitespace-pre-wrap">
-            {content || 'Starting analysis...'}
+            {content || 'Starting medical analysis...'}
+            {isThinking && <span className="inline-block w-2 h-4 bg-purple-400 ml-0.5 animate-pulse rounded-sm" />}
           </pre>
         </div>
+      )}
+
+      {/* Completed summary */}
+      {!isThinking && content && !isExpanded && (
+        <p className="text-xs text-purple-400 truncate">
+          {content.slice(0, 120)}...
+        </p>
       )}
     </div>
   );
