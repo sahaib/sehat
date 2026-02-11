@@ -1,11 +1,10 @@
 import { NextRequest } from 'next/server';
-import OpenAI from 'openai';
 import { TranscribeResponse } from '@/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const openai = new OpenAI();
+const SARVAM_STT_URL = 'https://api.sarvam.ai/speech-to-text';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,17 +19,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const transcription = await openai.audio.transcriptions.create({
-      file: audioFile,
-      model: 'whisper-1',
-      response_format: 'verbose_json',
-      ...(languageHint ? { language: languageHint } : {}),
+    const apiKey = process.env.SARVAM_API_KEY;
+    if (!apiKey) {
+      return Response.json(
+        { error: 'Sarvam API key not configured' },
+        { status: 500 }
+      );
+    }
+
+    // Build multipart form data for Sarvam API
+    const sarvamForm = new FormData();
+    sarvamForm.append('file', audioFile, audioFile.name || 'recording.webm');
+    sarvamForm.append('model', 'saarika:v2');
+    // Use language hint or auto-detect
+    sarvamForm.append('language_code', languageHint || 'unknown');
+
+    const sarvamResponse = await fetch(SARVAM_STT_URL, {
+      method: 'POST',
+      headers: {
+        'API-Subscription-Key': apiKey,
+      },
+      body: sarvamForm,
     });
 
+    if (!sarvamResponse.ok) {
+      const errorBody = await sarvamResponse.text();
+      console.error('Sarvam STT error:', sarvamResponse.status, errorBody);
+      return Response.json(
+        { error: `Transcription failed: ${sarvamResponse.status}` },
+        { status: 502 }
+      );
+    }
+
+    const data = await sarvamResponse.json();
+
     const response: TranscribeResponse = {
-      text: transcription.text,
-      language: transcription.language || languageHint || 'unknown',
-      confidence: 1.0, // Whisper doesn't provide confidence per-transcription
+      text: data.transcript || '',
+      language: data.language_code || languageHint || 'unknown',
+      confidence: 1.0,
     };
 
     return Response.json(response);
