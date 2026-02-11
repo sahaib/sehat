@@ -28,8 +28,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Build multipart form data for Sarvam API
+    // Sarvam rejects MIME types with codec params (e.g. "audio/webm;codecs=opus")
+    // so strip everything after the semicolon to get the base type
+    const cleanType = audioFile.type.split(';')[0] || 'audio/webm';
+    const cleanFile = new File([audioFile], audioFile.name || 'recording.webm', {
+      type: cleanType,
+    });
     const sarvamForm = new FormData();
-    sarvamForm.append('file', audioFile, audioFile.name || 'recording.webm');
+    sarvamForm.append('file', cleanFile, cleanFile.name);
     sarvamForm.append('model', 'saarika:v2');
     // Use language hint or auto-detect
     sarvamForm.append('language_code', languageHint || 'unknown');
