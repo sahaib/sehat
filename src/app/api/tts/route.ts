@@ -60,9 +60,6 @@ async function synthesizeChunk(
       target_language_code: languageCode,
       speaker: 'simran',
       model: 'bulbul:v3',
-      pace: 1.0,
-      speech_sample_rate: 22050,
-      enable_preprocessing: true,
     }),
   });
 

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { ClerkProvider } from '@clerk/nextjs';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -22,16 +23,24 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
+const clerkEnabled = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
+  const content = (
     <html lang="en">
       <body className="min-h-screen bg-gradient-to-b from-teal-50 via-white to-teal-50/30 font-sans">
         {children}
       </body>
     </html>
   );
+
+  if (clerkEnabled) {
+    return <ClerkProvider>{content}</ClerkProvider>;
+  }
+
+  return content;
 }
