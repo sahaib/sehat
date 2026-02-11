@@ -60,7 +60,6 @@ async function synthesizeChunk(
       speaker: 'simran',
       model: 'bulbul:v3',
       pace: 1.0,
-      pitch: 0.0,
       speech_sample_rate: 22050,
       enable_preprocessing: true,
     }),

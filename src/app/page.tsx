@@ -1,6 +1,6 @@
 'use client';
 
-import { useReducer, useCallback, useRef, useEffect, useState } from 'react';
+import { useReducer, useCallback, useRef, useEffect, useState, useMemo } from 'react';
 import {
   ConversationState,
   ConversationAction,
@@ -18,6 +18,7 @@ import ThinkingDisplay from '@/components/ThinkingDisplay';
 import TriageResult from '@/components/TriageResult';
 import DoctorSummary from '@/components/DoctorSummary';
 import VoiceInput from '@/components/VoiceInput';
+import VoiceConversationMode from '@/components/VoiceConversationMode';
 import DisclaimerFooter from '@/components/DisclaimerFooter';
 import ReadAloudButton from '@/components/ReadAloudButton';
 
@@ -320,12 +321,44 @@ export default function Home() {
     dispatch({ type: 'RESET' });
   }, []);
 
+  // Voice conversation mode
+  const [isVoiceMode, setIsVoiceMode] = useState(false);
+  const voiceTextRef = useRef<string | null>(null);
+
   const hasConversation = state.messages.length > 0;
   const showResult =
     state.currentResult &&
     (!state.currentResult.needs_follow_up ||
       state.followUpCount >= MAX_FOLLOW_UPS);
   const isInputDisabled = state.isStreaming || state.isThinking;
+
+  // Derive text to auto-speak in voice mode
+  const voiceTextToSpeak = useMemo(() => {
+    if (!isVoiceMode || state.isStreaming || state.isThinking) return null;
+
+    // Follow-up question from assistant
+    const lastMsg = state.messages[state.messages.length - 1];
+    if (lastMsg?.role === 'assistant' && lastMsg.isFollowUp) {
+      return lastMsg.content;
+    }
+
+    // Final result
+    if (showResult && state.currentResult) {
+      if (state.currentResult.is_medical_query === false) {
+        return state.currentResult.redirect_message || null;
+      }
+      return state.currentResult.reasoning_summary;
+    }
+
+    return null;
+  }, [isVoiceMode, state.isStreaming, state.isThinking, state.messages, showResult, state.currentResult]);
+
+  // Reset voice text tracking when entering voice mode
+  useEffect(() => {
+    if (!isVoiceMode) {
+      voiceTextRef.current = null;
+    }
+  }, [isVoiceMode]);
 
   return (
     <main className="flex flex-col h-[100dvh] max-w-2xl mx-auto relative">
@@ -490,20 +523,46 @@ export default function Home() {
 
       {/* Input Area (fixed at bottom) */}
       <div className="flex-shrink-0 px-4 pb-4 pt-2 bg-gradient-to-t from-white via-white to-transparent no-print safe-bottom">
-        <div className="relative">
-          <TextInput
-            onSubmit={handleSubmit}
-            disabled={isInputDisabled}
+        {isVoiceMode ? (
+          <VoiceConversationMode
             language={state.language}
-            extraActions={
-              <VoiceInput
-                onTranscript={handleSubmit}
-                language={state.language}
-                disabled={isInputDisabled}
-              />
-            }
+            onTranscript={handleSubmit}
+            onExit={() => setIsVoiceMode(false)}
+            textToSpeak={voiceTextToSpeak}
+            isProcessing={state.isStreaming || state.isThinking}
           />
-        </div>
+        ) : (
+          <div className="relative">
+            <TextInput
+              onSubmit={handleSubmit}
+              disabled={isInputDisabled}
+              language={state.language}
+              extraActions={
+                <>
+                  <VoiceInput
+                    onTranscript={handleSubmit}
+                    language={state.language}
+                    disabled={isInputDisabled}
+                  />
+                  <button
+                    onClick={() => setIsVoiceMode(true)}
+                    disabled={isInputDisabled}
+                    className="w-9 h-9 rounded-full flex items-center justify-center
+                               text-gray-400 hover:text-teal-600 hover:bg-teal-50
+                               transition-all duration-150 active:scale-90
+                               disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="Start voice conversation"
+                    title="Voice conversation mode"
+                  >
+                    <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                    </svg>
+                  </button>
+                </>
+              }
+            />
+          </div>
+        )}
         <DisclaimerFooter />
       </div>
     </main>
