@@ -4,7 +4,81 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const SARVAM_API_URL = 'https://api.sarvam.ai/text-to-speech';
-const MAX_CHARS = 1500;
+const MAX_CHUNK_CHARS = 480; // Sarvam limit is 500; leave buffer
+
+/** Split text into chunks at sentence boundaries, each <= maxLen chars */
+function chunkText(text: string, maxLen: number): string[] {
+  if (text.length <= maxLen) return [text];
+
+  const chunks: string[] = [];
+  let remaining = text;
+
+  while (remaining.length > 0) {
+    if (remaining.length <= maxLen) {
+      chunks.push(remaining);
+      break;
+    }
+
+    // Try to split at sentence boundary (. ! ?)
+    let splitAt = -1;
+    for (let i = maxLen; i >= maxLen / 2; i--) {
+      if ('.!?।'.includes(remaining[i])) {
+        splitAt = i + 1;
+        break;
+      }
+    }
+    // Fallback: split at last space
+    if (splitAt === -1) {
+      splitAt = remaining.lastIndexOf(' ', maxLen);
+    }
+    // Last resort: hard cut
+    if (splitAt <= 0) {
+      splitAt = maxLen;
+    }
+
+    chunks.push(remaining.slice(0, splitAt).trim());
+    remaining = remaining.slice(splitAt).trim();
+  }
+
+  return chunks.filter((c) => c.length > 0);
+}
+
+async function synthesizeChunk(
+  text: string,
+  languageCode: string,
+  apiKey: string
+): Promise<Buffer> {
+  const response = await fetch(SARVAM_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'API-Subscription-Key': apiKey,
+    },
+    body: JSON.stringify({
+      text,
+      target_language_code: languageCode,
+      speaker: 'meera',
+      model: 'bulbul:v2',
+      pace: 1.0,
+      pitch: 0.0,
+      speech_sample_rate: 22050,
+      enable_preprocessing: true,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.error('Sarvam TTS chunk error:', response.status, errorBody);
+    throw new Error(`Sarvam TTS failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  if (!data.audios || !data.audios[0]) {
+    throw new Error('No audio returned from Sarvam');
+  }
+
+  return Buffer.from(data.audios[0], 'base64');
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,52 +96,54 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Truncate to Sarvam's 1500 char limit
-    const trimmedText = text.slice(0, MAX_CHARS);
+    // Strip markdown formatting for cleaner speech
+    const plainText = text
+      .replace(/#{1,3}\s+/g, '')
+      .replace(/\*\*(.+?)\*\*/g, '$1')
+      .replace(/\*(.+?)\*/g, '$1')
+      .replace(/^[-*]\s+/gm, '')
+      .replace(/^\d+\.\s+/gm, '')
+      .trim();
 
-    const sarvamResponse = await fetch(SARVAM_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'API-Subscription-Key': apiKey,
-      },
-      body: JSON.stringify({
-        text: trimmedText,
-        target_language_code: language_code || 'en-IN',
-        speaker: 'meera',
-        model: 'bulbul:v2',
-        pace: 1.0,
-        pitch: 0.0,
-        speech_sample_rate: 22050,
-        enable_preprocessing: true,
-      }),
-    });
+    const langCode = language_code || 'en-IN';
+    const chunks = chunkText(plainText, MAX_CHUNK_CHARS);
 
-    if (!sarvamResponse.ok) {
-      const errorBody = await sarvamResponse.text();
-      console.error('Sarvam TTS error:', sarvamResponse.status, errorBody);
-      return Response.json(
-        { error: `Sarvam TTS failed: ${sarvamResponse.status}` },
-        { status: 502 }
-      );
+    // Synthesize first chunk (or only chunk)
+    // For multiple chunks, synthesize sequentially and concatenate raw PCM audio
+    const audioBuffers: Buffer[] = [];
+    for (const chunk of chunks) {
+      const buf = await synthesizeChunk(chunk, langCode, apiKey);
+      audioBuffers.push(buf);
     }
 
-    const data = await sarvamResponse.json();
-
-    if (!data.audios || !data.audios[0]) {
-      return Response.json(
-        { error: 'No audio returned from Sarvam' },
-        { status: 502 }
+    // Concatenate WAV files: use header from first, append raw data from rest
+    let finalAudio: Buffer;
+    if (audioBuffers.length === 1) {
+      finalAudio = audioBuffers[0];
+    } else {
+      // WAV header is 44 bytes; concatenate data portions
+      const headerSize = 44;
+      const header = audioBuffers[0].subarray(0, headerSize);
+      const dataParts = audioBuffers.map((buf, i) =>
+        i === 0 ? buf.subarray(headerSize) : buf.subarray(headerSize)
       );
+      const totalDataSize = dataParts.reduce((sum, d) => sum + d.length, 0);
+
+      // Update header with correct total size
+      const newHeader = Buffer.from(header);
+      // Bytes 4-7: file size - 8
+      newHeader.writeUInt32LE(totalDataSize + headerSize - 8, 4);
+      // Bytes 40-43: data chunk size
+      newHeader.writeUInt32LE(totalDataSize, 40);
+
+      finalAudio = Buffer.concat([newHeader, ...dataParts]);
     }
 
-    // Decode base64 WAV and return as binary audio
-    const audioBuffer = Buffer.from(data.audios[0], 'base64');
-
-    return new Response(audioBuffer, {
+    const uint8 = new Uint8Array(finalAudio);
+    return new Response(uint8, {
       headers: {
         'Content-Type': 'audio/wav',
-        'Content-Length': audioBuffer.length.toString(),
+        'Content-Length': uint8.length.toString(),
         'Cache-Control': 'public, max-age=3600',
       },
     });
