@@ -2,15 +2,19 @@ import { NextRequest } from 'next/server';
 import { detectEmergency } from '@/lib/emergency-detector';
 import { streamTriage } from '@/lib/triage-agent';
 import { TriageRequest, StreamEvent } from '@/types';
+import { telemetry, InputMode, TriageEvent } from '@/lib/telemetry';
+import { saveTriageSession } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
     const body: TriageRequest = await request.json();
-    const { message, language, conversationHistory } = body;
+    const { message, language, conversationHistory, sessionId, inputMode } = body;
 
     if (!message?.trim() || !language) {
       return Response.json(
@@ -23,6 +27,24 @@ export async function POST(request: NextRequest) {
     const emergencyCheck = detectEmergency(message, language);
 
     const encoder = new TextEncoder();
+
+    // Telemetry accumulator — filled as stream progresses
+    const tel: TriageEvent = {
+      timestamp: startTime,
+      language,
+      inputMode: (inputMode as InputMode) || 'text',
+      severity: null,
+      confidence: null,
+      isEmergency: emergencyCheck.isEmergency,
+      isMedicalQuery: true,
+      followUpCount: (conversationHistory || []).filter(m => m.isFollowUp).length,
+      latencyMs: 0,
+      hadError: false,
+    };
+
+    // DB record accumulator — captures result data for Supabase persistence
+    let resultSymptoms: string[] = [];
+    let resultReasoning: string | null = null;
 
     const readable = new ReadableStream({
       async start(controller) {
@@ -45,15 +67,47 @@ export async function POST(request: NextRequest) {
             conversationHistory || []
           )) {
             send(event);
+
+            // Capture result metrics for telemetry + DB
+            if (event.type === 'result') {
+              tel.severity = event.data.severity;
+              tel.confidence = event.data.confidence;
+              tel.isMedicalQuery = event.data.is_medical_query !== false;
+              resultSymptoms = event.data.symptoms_identified || [];
+              resultReasoning = event.data.reasoning_summary || null;
+            }
           }
 
           controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          tel.latencyMs = Date.now() - startTime;
+          telemetry.recordTriage(tel);
+
+          // Persist to Supabase (fire-and-forget)
+          if (tel.severity) {
+            saveTriageSession({
+              session_id: sessionId || 'unknown',
+              language,
+              severity: tel.severity,
+              confidence: tel.confidence,
+              symptoms: resultSymptoms,
+              input_mode: (inputMode as string) || 'text',
+              reasoning_summary: resultReasoning,
+              is_emergency: tel.isEmergency,
+              is_medical_query: tel.isMedicalQuery,
+              follow_up_count: tel.followUpCount,
+              latency_ms: tel.latencyMs,
+            });
+          }
+
           controller.close();
         } catch (error) {
           const errorMessage =
             error instanceof Error ? error.message : 'An unexpected error occurred';
           send({ type: 'error', message: errorMessage });
           controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          tel.hadError = true;
+          tel.latencyMs = Date.now() - startTime;
+          telemetry.recordTriage(tel);
           controller.close();
         }
       },

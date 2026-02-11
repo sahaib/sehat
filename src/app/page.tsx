@@ -1,6 +1,8 @@
 'use client';
 
-import { useReducer, useCallback, useRef, useEffect, useState } from 'react';
+import { useReducer, useCallback, useRef, useEffect, useState, useMemo } from 'react';
+import { CLERK_ENABLED } from '@/hooks/useAuth';
+import ClerkAuthButtons from '@/components/ClerkAuthButtons';
 import {
   ConversationState,
   ConversationAction,
@@ -18,6 +20,10 @@ import ThinkingDisplay from '@/components/ThinkingDisplay';
 import TriageResult from '@/components/TriageResult';
 import DoctorSummary from '@/components/DoctorSummary';
 import VoiceInput from '@/components/VoiceInput';
+import VoiceConversationMode from '@/components/VoiceConversationMode';
+import SignUpPrompt from '@/components/SignUpPrompt';
+import ProfileForm from '@/components/ProfileForm';
+import FileUpload from '@/components/FileUpload';
 import DisclaimerFooter from '@/components/DisclaimerFooter';
 import ReadAloudButton from '@/components/ReadAloudButton';
 
@@ -170,6 +176,7 @@ export default function Home() {
     ...initialState,
     sessionId: '',
   });
+  const [showProfileForm, setShowProfileForm] = useState(false);
 
   useEffect(() => {
     if (!mounted) {
@@ -180,6 +187,7 @@ export default function Home() {
 
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputModeRef = useRef<'text' | 'voice' | 'voice_conversation'>('text');
 
   // Auto-scroll when content changes
   useEffect(() => {
@@ -216,6 +224,7 @@ export default function Home() {
             language: state.language,
             conversationHistory: state.messages,
             sessionId: state.sessionId,
+            inputMode: inputModeRef.current,
           }),
           signal: controller.signal,
         });
@@ -315,10 +324,29 @@ export default function Home() {
     [state.language, state.messages, state.sessionId, state.followUpCount]
   );
 
+  const handleTextSubmit = useCallback((text: string) => {
+    inputModeRef.current = 'text';
+    handleSubmit(text);
+  }, [handleSubmit]);
+
+  const handleVoiceSubmit = useCallback((text: string) => {
+    inputModeRef.current = 'voice';
+    handleSubmit(text);
+  }, [handleSubmit]);
+
+  const handleVoiceConversationSubmit = useCallback((text: string) => {
+    inputModeRef.current = 'voice_conversation';
+    handleSubmit(text);
+  }, [handleSubmit]);
+
   const handleReset = useCallback(() => {
     abortRef.current?.abort();
     dispatch({ type: 'RESET' });
   }, []);
+
+  // Voice conversation mode
+  const [isVoiceMode, setIsVoiceMode] = useState(false);
+  const voiceTextRef = useRef<string | null>(null);
 
   const hasConversation = state.messages.length > 0;
   const showResult =
@@ -326,6 +354,34 @@ export default function Home() {
     (!state.currentResult.needs_follow_up ||
       state.followUpCount >= MAX_FOLLOW_UPS);
   const isInputDisabled = state.isStreaming || state.isThinking;
+
+  // Derive text to auto-speak in voice mode
+  const voiceTextToSpeak = useMemo(() => {
+    if (!isVoiceMode || state.isStreaming || state.isThinking) return null;
+
+    // Follow-up question from assistant
+    const lastMsg = state.messages[state.messages.length - 1];
+    if (lastMsg?.role === 'assistant' && lastMsg.isFollowUp) {
+      return lastMsg.content;
+    }
+
+    // Final result
+    if (showResult && state.currentResult) {
+      if (state.currentResult.is_medical_query === false) {
+        return state.currentResult.redirect_message || null;
+      }
+      return state.currentResult.reasoning_summary;
+    }
+
+    return null;
+  }, [isVoiceMode, state.isStreaming, state.isThinking, state.messages, showResult, state.currentResult]);
+
+  // Reset voice text tracking when entering voice mode
+  useEffect(() => {
+    if (!isVoiceMode) {
+      voiceTextRef.current = null;
+    }
+  }, [isVoiceMode]);
 
   return (
     <main className="flex flex-col h-[100dvh] max-w-2xl mx-auto relative">
@@ -353,20 +409,35 @@ export default function Home() {
               <p className="text-xs text-gray-400">AI Medical Triage</p>
             </div>
           </div>
-          {hasConversation && (
-            <button
-              onClick={handleReset}
-              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-teal-700
-                         px-3 py-1.5 rounded-lg hover:bg-teal-50 border border-transparent
-                         hover:border-teal-200 transition-all duration-200"
-              aria-label="Start new conversation"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" />
-              </svg>
-              New
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {hasConversation && (
+              <button
+                onClick={handleReset}
+                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-teal-700
+                           px-3 py-1.5 rounded-lg hover:bg-teal-50 border border-transparent
+                           hover:border-teal-200 transition-all duration-200"
+                aria-label="Start new conversation"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" />
+                </svg>
+                New
+              </button>
+            )}
+            {mounted && (
+              CLERK_ENABLED ? (
+                <ClerkAuthButtons onProfileClick={() => setShowProfileForm(true)} />
+              ) : (
+                <a
+                  href="/sign-in"
+                  className="text-xs text-teal-600 hover:text-teal-700 hover:bg-teal-50
+                             px-3 py-1.5 rounded-lg border border-teal-200 transition-colors font-medium"
+                >
+                  Sign in
+                </a>
+              )
+            )}
+          </div>
         </div>
 
         <LanguageSelector
@@ -456,6 +527,17 @@ export default function Home() {
                 severity={state.currentResult.severity}
                 symptoms={state.currentResult.symptoms_identified}
               />
+
+              {/* File upload for medical reports — only after results */}
+              <FileUpload language={state.language} disabled={isInputDisabled} />
+
+              {/* Smart sign-up prompt — only after non-severe results, never interrupt emergency/urgent */}
+              {(state.currentResult.severity === 'routine' || state.currentResult.severity === 'self_care') && (
+                <SignUpPrompt
+                  language={state.language}
+                  onProfileClick={() => setShowProfileForm(true)}
+                />
+              )}
             </>
           )
         )}
@@ -490,22 +572,56 @@ export default function Home() {
 
       {/* Input Area (fixed at bottom) */}
       <div className="flex-shrink-0 px-4 pb-4 pt-2 bg-gradient-to-t from-white via-white to-transparent no-print safe-bottom">
-        <div className="relative">
-          <TextInput
-            onSubmit={handleSubmit}
-            disabled={isInputDisabled}
+        {isVoiceMode ? (
+          <VoiceConversationMode
             language={state.language}
-            extraActions={
-              <VoiceInput
-                onTranscript={handleSubmit}
-                language={state.language}
-                disabled={isInputDisabled}
-              />
-            }
+            onTranscript={handleVoiceConversationSubmit}
+            onExit={() => setIsVoiceMode(false)}
+            textToSpeak={voiceTextToSpeak}
+            isProcessing={state.isStreaming || state.isThinking}
           />
-        </div>
+        ) : (
+          <div className="relative">
+            <TextInput
+              onSubmit={handleTextSubmit}
+              disabled={isInputDisabled}
+              language={state.language}
+              extraActions={
+                <>
+                  <VoiceInput
+                    onTranscript={handleVoiceSubmit}
+                    language={state.language}
+                    disabled={isInputDisabled}
+                  />
+                  <button
+                    onClick={() => setIsVoiceMode(true)}
+                    disabled={isInputDisabled}
+                    className="w-9 h-9 rounded-full flex items-center justify-center
+                               text-gray-400 hover:text-teal-600 hover:bg-teal-50
+                               transition-all duration-150 active:scale-90
+                               disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="Start voice conversation"
+                    title="Voice conversation mode"
+                  >
+                    <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                    </svg>
+                  </button>
+                </>
+              }
+            />
+          </div>
+        )}
         <DisclaimerFooter />
       </div>
+
+      {/* Profile Form Modal */}
+      {showProfileForm && (
+        <ProfileForm
+          language={state.language}
+          onClose={() => setShowProfileForm(false)}
+        />
+      )}
     </main>
   );
 }

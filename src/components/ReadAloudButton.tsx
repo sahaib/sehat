@@ -9,7 +9,7 @@ interface ReadAloudButtonProps {
 }
 
 export default function ReadAloudButton({ text, languageCode, size = 'sm' }: ReadAloudButtonProps) {
-  const [ttsState, setTtsState] = useState<'idle' | 'loading' | 'playing'>('idle');
+  const [ttsState, setTtsState] = useState<'idle' | 'loading' | 'playing' | 'error'>('idle');
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const handleClick = useCallback(async () => {
@@ -21,6 +21,12 @@ export default function ReadAloudButton({ text, languageCode, size = 'sm' }: Rea
     }
 
     if (ttsState === 'loading') return;
+    if (ttsState === 'error') {
+      setTtsState('idle');
+      return;
+    }
+
+    if (!text?.trim()) return;
 
     setTtsState('loading');
     try {
@@ -33,9 +39,26 @@ export default function ReadAloudButton({ text, languageCode, size = 'sm' }: Rea
         }),
       });
 
-      if (!response.ok) throw new Error('TTS request failed');
+      if (!response.ok) {
+        console.error('TTS response error:', response.status);
+        setTtsState('error');
+        return;
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('audio')) {
+        console.error('TTS returned non-audio content-type:', contentType);
+        setTtsState('error');
+        return;
+      }
 
       const audioBlob = await response.blob();
+      if (audioBlob.size < 100) {
+        console.error('TTS returned empty/tiny audio:', audioBlob.size);
+        setTtsState('error');
+        return;
+      }
+
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
       audioRef.current = audio;
@@ -45,14 +68,16 @@ export default function ReadAloudButton({ text, languageCode, size = 'sm' }: Rea
         URL.revokeObjectURL(audioUrl);
       };
       audio.onerror = () => {
-        setTtsState('idle');
+        console.error('Audio playback error');
+        setTtsState('error');
         URL.revokeObjectURL(audioUrl);
       };
 
       setTtsState('playing');
       await audio.play();
-    } catch {
-      setTtsState('idle');
+    } catch (err) {
+      console.error('TTS error:', err);
+      setTtsState('error');
     }
   }, [ttsState, text, languageCode]);
 
@@ -66,13 +91,19 @@ export default function ReadAloudButton({ text, languageCode, size = 'sm' }: Rea
       className={`inline-flex items-center gap-1.5 ${textSize} font-medium transition-all active:scale-95
                   ${ttsState === 'playing'
                     ? 'text-teal-700'
-                    : 'text-teal-600 hover:text-teal-700'
+                    : ttsState === 'error'
+                      ? 'text-red-500 hover:text-red-600'
+                      : 'text-teal-600 hover:text-teal-700'
                   } ${ttsState === 'loading' ? 'opacity-60 cursor-wait' : ''}`}
       aria-label={ttsState === 'playing' ? 'Stop reading' : 'Read aloud'}
     >
       {ttsState === 'loading' ? (
         <svg className={`${iconSize} animate-spin`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" />
+        </svg>
+      ) : ttsState === 'error' ? (
+        <svg className={iconSize} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
         </svg>
       ) : ttsState === 'playing' ? (
         <svg className={iconSize} viewBox="0 0 24 24" fill="currentColor">
@@ -84,7 +115,7 @@ export default function ReadAloudButton({ text, languageCode, size = 'sm' }: Rea
           <path d="M15.932 7.757a.75.75 0 011.061 0 6 6 0 010 8.486.75.75 0 01-1.06-1.061 4.5 4.5 0 000-6.364.75.75 0 010-1.06z" />
         </svg>
       )}
-      {ttsState === 'loading' ? 'Loading...' : ttsState === 'playing' ? 'Stop' : 'Read aloud'}
+      {ttsState === 'loading' ? 'Loading...' : ttsState === 'playing' ? 'Stop' : ttsState === 'error' ? 'Retry' : 'Read aloud'}
     </button>
   );
 }

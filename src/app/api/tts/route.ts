@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { telemetry } from '@/lib/telemetry';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -59,10 +60,6 @@ async function synthesizeChunk(
       target_language_code: languageCode,
       speaker: 'simran',
       model: 'bulbul:v3',
-      pace: 1.0,
-      pitch: 0.0,
-      speech_sample_rate: 22050,
-      enable_preprocessing: true,
     }),
   });
 
@@ -81,6 +78,8 @@ async function synthesizeChunk(
 }
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
     const { text, language_code } = await request.json();
 
@@ -139,6 +138,14 @@ export async function POST(request: NextRequest) {
       finalAudio = Buffer.concat([newHeader, ...dataParts]);
     }
 
+    telemetry.recordTTS({
+      timestamp: startTime,
+      language: langCode,
+      textLength: plainText.length,
+      latencyMs: Date.now() - startTime,
+      success: true,
+    });
+
     const uint8 = new Uint8Array(finalAudio);
     return new Response(uint8, {
       headers: {
@@ -149,6 +156,13 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('TTS error:', error);
+    telemetry.recordTTS({
+      timestamp: startTime,
+      language: 'unknown',
+      textLength: 0,
+      latencyMs: Date.now() - startTime,
+      success: false,
+    });
     const message =
       error instanceof Error ? error.message : 'Text-to-speech failed';
     return Response.json({ error: message }, { status: 500 });
