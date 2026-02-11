@@ -3,7 +3,17 @@ import { detectEmergency } from '@/lib/emergency-detector';
 import { streamTriage } from '@/lib/triage-agent';
 import { TriageRequest, StreamEvent } from '@/types';
 import { telemetry, InputMode, TriageEvent } from '@/lib/telemetry';
-import { saveTriageSession } from '@/lib/db';
+import { saveTriageSession, saveConversationMessage, saveTriageResult } from '@/lib/db';
+
+async function getClerkUserId(): Promise<string | null> {
+  try {
+    const { auth } = await import('@clerk/nextjs/server');
+    const { userId } = await auth();
+    return userId;
+  } catch {
+    return null;
+  }
+}
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,6 +25,7 @@ export async function POST(request: NextRequest) {
   try {
     const body: TriageRequest = await request.json();
     const { message, language, conversationHistory, sessionId, inputMode } = body;
+    const clerkUserId = await getClerkUserId();
 
     if (!message?.trim() || !language) {
       return Response.json(
@@ -45,6 +56,8 @@ export async function POST(request: NextRequest) {
     // DB record accumulator — captures result data for Supabase persistence
     let resultSymptoms: string[] = [];
     let resultReasoning: string | null = null;
+    let thinkingAccumulator = '';
+    let resultData: Record<string, unknown> | null = null;
 
     const readable = new ReadableStream({
       async start(controller) {
@@ -60,6 +73,16 @@ export async function POST(request: NextRequest) {
             send({ type: 'emergency', data: emergencyCheck });
           }
 
+          // Save user message to DB (fire-and-forget)
+          saveConversationMessage({
+            session_id: sessionId || 'unknown',
+            clerk_user_id: clerkUserId,
+            role: 'user',
+            content: message,
+            language,
+            is_follow_up: (conversationHistory || []).length > 0,
+          });
+
           // Stream triage response from Claude
           for await (const event of streamTriage(
             message,
@@ -68,6 +91,11 @@ export async function POST(request: NextRequest) {
           )) {
             send(event);
 
+            // Capture thinking content for DB
+            if (event.type === 'thinking') {
+              thinkingAccumulator += event.content;
+            }
+
             // Capture result metrics for telemetry + DB
             if (event.type === 'result') {
               tel.severity = event.data.severity;
@@ -75,6 +103,24 @@ export async function POST(request: NextRequest) {
               tel.isMedicalQuery = event.data.is_medical_query !== false;
               resultSymptoms = event.data.symptoms_identified || [];
               resultReasoning = event.data.reasoning_summary || null;
+              resultData = event.data as unknown as Record<string, unknown>;
+            }
+
+            // Save follow-up questions as assistant messages
+            if (event.type === 'follow_up' || (event.type === 'result' && event.data.needs_follow_up && event.data.follow_up_question)) {
+              const question = event.type === 'follow_up'
+                ? (event as { type: 'follow_up'; question: string }).question
+                : event.data.follow_up_question;
+              if (question) {
+                saveConversationMessage({
+                  session_id: sessionId || 'unknown',
+                  clerk_user_id: clerkUserId,
+                  role: 'assistant',
+                  content: question,
+                  language,
+                  is_follow_up: true,
+                });
+              }
             }
           }
 
@@ -86,6 +132,7 @@ export async function POST(request: NextRequest) {
           if (tel.severity) {
             saveTriageSession({
               session_id: sessionId || 'unknown',
+              clerk_user_id: clerkUserId,
               language,
               severity: tel.severity,
               confidence: tel.confidence,
@@ -97,6 +144,17 @@ export async function POST(request: NextRequest) {
               follow_up_count: tel.followUpCount,
               latency_ms: tel.latencyMs,
             });
+
+            // Save full result JSON for history replay
+            if (resultData) {
+              saveTriageResult({
+                session_id: sessionId || 'unknown',
+                clerk_user_id: clerkUserId,
+                result_json: resultData,
+                thinking_content: thinkingAccumulator || null,
+                language,
+              });
+            }
           }
 
           controller.close();

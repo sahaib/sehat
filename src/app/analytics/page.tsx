@@ -48,6 +48,8 @@ interface Metrics {
     latencyMs: number;
     isMedicalQuery: boolean;
   }>;
+  isAdmin?: boolean;
+  dataSource?: 'supabase' | 'memory';
 }
 
 const LANG_LABELS: Record<string, string> = {
@@ -166,9 +168,17 @@ export default function AnalyticsPage() {
               Every triage = someone getting health guidance who might not have had access
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-xs text-gray-500">Live</span>
+          <div className="flex items-center gap-3">
+            {metrics.isAdmin && (
+              <span className="text-[10px] font-medium bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">Admin</span>
+            )}
+            {metrics.dataSource === 'supabase' && (
+              <span className="text-[10px] text-gray-400">Persistent</span>
+            )}
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              <span className="text-xs text-gray-500">Live</span>
+            </div>
           </div>
         </div>
       </header>
@@ -360,14 +370,15 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        {/* Recent Activity */}
+        {/* Recent Activity — visible to admins only */}
         <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
           <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-4">
             Recent Activity
+            {!metrics.isAdmin && <span className="text-[10px] text-gray-400 font-normal ml-2">(admin only)</span>}
           </h2>
           {metrics.recentActivity.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">
-              No triage sessions yet. Start a conversation to see data here.
+              {metrics.isAdmin ? 'No triage sessions yet. Start a conversation to see data here.' : 'Sign in as admin to view recent activity.'}
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -416,7 +427,8 @@ export default function AnalyticsPage() {
 
         {/* Footer */}
         <p className="text-center text-[10px] text-gray-300 pb-4">
-          Privacy: Zero PII stored. All metrics are aggregate counts. Data resets on deploy.
+          Privacy: Zero PII stored. All metrics are aggregate counts.
+          {metrics.dataSource === 'supabase' ? ' Data persisted in Supabase.' : ' Data resets on deploy.'}
         </p>
       </div>
     </div>

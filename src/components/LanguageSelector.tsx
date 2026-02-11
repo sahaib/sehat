@@ -25,12 +25,12 @@ export default function LanguageSelector({
               onClick={() => onLanguageChange(lang.code)}
               disabled={disabled}
               className={`
-                px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
+                px-4 py-2 rounded-full text-sm font-medium transition-all duration-300
                 whitespace-nowrap min-h-[44px]
                 ${
                   isSelected
-                    ? 'bg-teal-600 text-white shadow-md scale-105'
-                    : 'bg-white text-gray-600 border border-gray-200 hover:border-teal-300 hover:text-teal-700'
+                    ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white shadow-md shadow-teal-300/30 scale-105'
+                    : 'bg-white/70 backdrop-blur-sm text-gray-600 border border-white/60 hover:border-teal-300 hover:text-teal-700 hover:bg-white/90 hover:shadow-sm'
                 }
                 ${disabled ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}
               `}

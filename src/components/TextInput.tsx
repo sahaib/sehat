@@ -54,8 +54,8 @@ export default function TextInput({
 
   return (
     <div
-      className={`flex items-end bg-white rounded-2xl border transition-all duration-200
-                  ${disabled ? 'opacity-50 border-gray-200' : 'border-gray-200 focus-within:border-teal-400 focus-within:ring-2 focus-within:ring-teal-100'}`}
+      className={`flex items-end rounded-2xl transition-all duration-300 glass-input
+                  ${disabled ? 'opacity-50' : 'focus-within:border-teal-400/60 focus-within:ring-2 focus-within:ring-teal-100/50 focus-within:shadow-lg focus-within:shadow-teal-100/20'}`}
     >
       {/* Textarea — borderless, fills the space */}
       <textarea
@@ -81,9 +81,9 @@ export default function TextInput({
           onClick={handleSubmit}
           disabled={disabled || !hasText}
           className={`w-9 h-9 rounded-full flex items-center justify-center
-                     transition-all duration-150 active:scale-90
+                     transition-all duration-300 active:scale-90
                      ${hasText
-                       ? 'bg-teal-600 text-white hover:bg-teal-700'
+                       ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white hover:from-teal-600 hover:to-teal-700 shadow-md shadow-teal-300/30 hover:shadow-lg'
                        : 'text-gray-300 cursor-default'
                      }`}
           aria-label="Send message"

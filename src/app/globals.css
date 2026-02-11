@@ -1,12 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   html {
-    /* Responsive base font: 16px on mobile, 17px on tablets, 18px on desktop */
     font-size: 16px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -28,7 +25,6 @@
 
   body {
     @apply text-gray-800 leading-relaxed;
-    /* Prevent overscroll bounce on iOS */
     overscroll-behavior: none;
   }
 }
@@ -40,29 +36,47 @@
   }
 
   .severity-card {
-    @apply rounded-2xl border-2 p-5 shadow-lg animate-slide-up;
+    @apply rounded-2xl border-2 p-5 shadow-lg animate-fade-in-up;
+    backdrop-filter: blur(8px);
   }
 
   .chat-bubble {
-    @apply rounded-2xl px-4 py-3 max-w-[85%] animate-fade-in;
+    @apply rounded-2xl px-4 py-3 max-w-[85%] animate-fade-in-up;
   }
 
   .chat-bubble-user {
-    @apply bg-teal-600 text-white ml-auto rounded-br-md;
+    @apply bg-gradient-to-br from-teal-500 to-teal-700 text-white ml-auto rounded-br-md;
+    box-shadow: 0 4px 20px -4px rgba(13, 148, 136, 0.4);
   }
 
   .chat-bubble-assistant {
-    @apply bg-white text-gray-800 mr-auto rounded-bl-md shadow-sm border border-gray-100;
+    @apply bg-white/80 backdrop-blur-sm text-gray-800 mr-auto rounded-bl-md border border-white/60;
+    box-shadow: 0 2px 12px -2px rgba(0, 0, 0, 0.06);
   }
 
   .btn-primary {
-    @apply bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-xl px-6 py-3
-           transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800
+           text-white font-medium rounded-xl px-6 py-3
+           transition-all duration-300 active:scale-95
+           disabled:opacity-50 disabled:cursor-not-allowed;
+    box-shadow: 0 4px 14px -2px rgba(13, 148, 136, 0.35);
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 6px 20px -2px rgba(13, 148, 136, 0.5);
   }
 
   .btn-emergency {
     @apply bg-emergency-600 hover:bg-emergency-700 text-white font-bold rounded-xl px-8 py-4
            text-xl transition-all duration-200 active:scale-95 animate-recording-pulse;
+  }
+
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-md border border-white/40 shadow-lg;
+  }
+
+  .glass-card-strong {
+    @apply bg-white/80 backdrop-blur-lg border border-white/50 shadow-xl;
   }
 }
 
@@ -75,13 +89,12 @@
     display: none;
   }
 
-  /* Safe area padding for notched devices */
   .safe-bottom {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 }
 
-/* Loading shimmer gradient */
+/* ─── Loading shimmer ─────────────────────────── */
 .shimmer-bg {
   background: linear-gradient(
     90deg,
@@ -93,7 +106,306 @@
   animation: shimmer 2s linear infinite;
 }
 
-/* Print styles */
+/* ─── Gradient blobs (background) ─────────────── */
+.gradient-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.gradient-blob-1 {
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(13, 148, 136, 0.3) 0%, transparent 70%);
+  top: -80px;
+  right: -60px;
+  animation: blob 7s infinite;
+}
+
+.gradient-blob-2 {
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.2) 0%, transparent 70%);
+  bottom: 20%;
+  left: -80px;
+  animation: blob 7s infinite reverse;
+}
+
+.gradient-blob-3 {
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+  top: 40%;
+  right: -40px;
+  animation: blob 9s infinite 2s;
+}
+
+/* ─── Glass effects ───────────────────────────── */
+.glass-input {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.04),
+    0 2px 4px -2px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.glass-header {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.modal-overlay {
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+/* ─── AMBIENT GLOW — Claude-inspired voice mode ── */
+
+/* Full-screen ambient glow overlay */
+.ambient-glow {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+  overflow: hidden;
+}
+
+/* The actual glow orbs */
+.ambient-glow-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  will-change: transform, opacity;
+}
+
+/* Listening state — warm coral/orange glow (like Claude voice) */
+.ambient-glow--listening .ambient-glow-orb:nth-child(1) {
+  width: 60%;
+  height: 50%;
+  bottom: -20%;
+  left: -10%;
+  background: radial-gradient(circle, rgba(251, 146, 60, 0.6) 0%, rgba(251, 113, 133, 0.3) 50%, transparent 70%);
+  animation: ambientFloat1 3s ease-in-out infinite;
+}
+
+.ambient-glow--listening .ambient-glow-orb:nth-child(2) {
+  width: 50%;
+  height: 45%;
+  bottom: -15%;
+  right: -10%;
+  background: radial-gradient(circle, rgba(244, 63, 94, 0.5) 0%, rgba(251, 146, 60, 0.2) 50%, transparent 70%);
+  animation: ambientFloat2 3.5s ease-in-out infinite 0.5s;
+}
+
+.ambient-glow--listening .ambient-glow-orb:nth-child(3) {
+  width: 40%;
+  height: 35%;
+  bottom: -10%;
+  left: 30%;
+  background: radial-gradient(circle, rgba(253, 186, 116, 0.5) 0%, transparent 70%);
+  animation: ambientFloat3 4s ease-in-out infinite 1s;
+}
+
+/* Speaking state — cool teal/cyan glow */
+.ambient-glow--speaking .ambient-glow-orb:nth-child(1) {
+  width: 60%;
+  height: 50%;
+  bottom: -20%;
+  left: -10%;
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.5) 0%, rgba(14, 165, 233, 0.3) 50%, transparent 70%);
+  animation: ambientFloat1 4s ease-in-out infinite;
+}
+
+.ambient-glow--speaking .ambient-glow-orb:nth-child(2) {
+  width: 50%;
+  height: 45%;
+  bottom: -15%;
+  right: -10%;
+  background: radial-gradient(circle, rgba(13, 148, 136, 0.5) 0%, rgba(45, 212, 191, 0.2) 50%, transparent 70%);
+  animation: ambientFloat2 4.5s ease-in-out infinite 0.5s;
+}
+
+.ambient-glow--speaking .ambient-glow-orb:nth-child(3) {
+  width: 40%;
+  height: 35%;
+  bottom: -10%;
+  left: 30%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%);
+  animation: ambientFloat3 5s ease-in-out infinite 1s;
+}
+
+/* Thinking state — purple/indigo aurora */
+.ambient-glow--thinking .ambient-glow-orb:nth-child(1) {
+  width: 60%;
+  height: 50%;
+  bottom: -20%;
+  left: -10%;
+  background: radial-gradient(circle, rgba(147, 51, 234, 0.4) 0%, rgba(99, 102, 241, 0.2) 50%, transparent 70%);
+  animation: ambientFloat1 5s ease-in-out infinite;
+}
+
+.ambient-glow--thinking .ambient-glow-orb:nth-child(2) {
+  width: 50%;
+  height: 45%;
+  bottom: -15%;
+  right: -10%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.4) 0%, rgba(147, 51, 234, 0.15) 50%, transparent 70%);
+  animation: ambientFloat2 5.5s ease-in-out infinite 0.5s;
+}
+
+.ambient-glow--thinking .ambient-glow-orb:nth-child(3) {
+  width: 40%;
+  height: 35%;
+  bottom: -10%;
+  left: 30%;
+  background: radial-gradient(circle, rgba(192, 132, 252, 0.35) 0%, transparent 70%);
+  animation: ambientFloat3 6s ease-in-out infinite 1s;
+}
+
+@keyframes ambientFloat1 {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.8; }
+  50% { transform: translate(30px, -20px) scale(1.15); opacity: 1; }
+}
+
+@keyframes ambientFloat2 {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.7; }
+  50% { transform: translate(-25px, -15px) scale(1.1); opacity: 0.95; }
+}
+
+@keyframes ambientFloat3 {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.6; }
+  50% { transform: translate(15px, -25px) scale(1.2); opacity: 0.85; }
+}
+
+/* Animated gradient ring for voice button */
+.voice-ring {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  padding: 3px;
+  background: conic-gradient(
+    from 0deg,
+    rgba(251, 146, 60, 0.8),
+    rgba(244, 63, 94, 0.8),
+    rgba(147, 51, 234, 0.6),
+    rgba(45, 212, 191, 0.8),
+    rgba(251, 146, 60, 0.8)
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: voiceRingSpin 3s linear infinite;
+}
+
+@keyframes voiceRingSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Animated gradient bar (like Claude's voice bar) */
+.glow-bar {
+  position: relative;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.glow-bar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    rgba(251, 146, 60, 0.15),
+    rgba(244, 63, 94, 0.2),
+    rgba(251, 146, 60, 0.15),
+    rgba(253, 186, 116, 0.25),
+    rgba(251, 146, 60, 0.15)
+  );
+  background-size: 200% 100%;
+  animation: glowBarShimmer 3s ease-in-out infinite;
+}
+
+@keyframes glowBarShimmer {
+  0% { background-position: 0% 0; }
+  50% { background-position: 100% 0; }
+  100% { background-position: 0% 0; }
+}
+
+/* Speaking glow bar — teal */
+.glow-bar--speaking::before {
+  background: linear-gradient(
+    90deg,
+    rgba(45, 212, 191, 0.15),
+    rgba(13, 148, 136, 0.25),
+    rgba(45, 212, 191, 0.15),
+    rgba(99, 102, 241, 0.15),
+    rgba(45, 212, 191, 0.15)
+  );
+  background-size: 200% 100%;
+  animation: glowBarShimmer 3s ease-in-out infinite;
+}
+
+/* Welcome hero pulse */
+.welcome-pulse {
+  animation: welcomePulse 4s ease-in-out infinite;
+}
+
+@keyframes welcomePulse {
+  0%, 100% {
+    box-shadow: 0 0 30px 10px rgba(13, 148, 136, 0.15), 0 0 60px 20px rgba(13, 148, 136, 0.08);
+  }
+  50% {
+    box-shadow: 0 0 40px 15px rgba(13, 148, 136, 0.25), 0 0 80px 30px rgba(13, 148, 136, 0.12);
+  }
+}
+
+/* Thinking border animation */
+.thinking-border {
+  position: relative;
+}
+
+.thinking-border::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 16px;
+  padding: 2px;
+  background: linear-gradient(
+    90deg,
+    rgba(147, 51, 234, 0.3),
+    rgba(99, 102, 241, 0.4),
+    rgba(147, 51, 234, 0.3),
+    rgba(192, 132, 252, 0.4),
+    rgba(147, 51, 234, 0.3)
+  );
+  background-size: 200% 100%;
+  animation: glowBarShimmer 2s ease-in-out infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Input glow when active */
+.input-active-glow {
+  box-shadow:
+    0 0 20px -4px rgba(13, 148, 136, 0.2),
+    0 0 40px -8px rgba(13, 148, 136, 0.1);
+  border-color: rgba(13, 148, 136, 0.4) !important;
+}
+
+/* ─── Print styles ────────────────────────────── */
 @media print {
   body * {
     visibility: hidden;

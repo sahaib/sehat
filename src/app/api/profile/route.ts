@@ -50,10 +50,11 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { age, gender, pre_existing_conditions, preferred_language } = body;
+  const { name, age, gender, pre_existing_conditions, preferred_language } = body;
 
   const profileData = {
     clerk_user_id: userId,
+    name: name || null,
     age: age || null,
     gender: gender || null,
     pre_existing_conditions: pre_existing_conditions || [],
