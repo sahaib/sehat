@@ -25,6 +25,18 @@ function cacheSet(key: string, blob: Blob): void {
   audioCache.set(key, blob);
 }
 
+// ─── Markdown stripping ─────────────────────────
+
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/#{1,3}\s+/g, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/^[-*]\s+/gm, '')
+    .replace(/^\d+\.\s+/gm, '')
+    .trim();
+}
+
 // ─── Helpers ────────────────────────────────────
 
 function base64ToBytes(b64: string): Uint8Array {
@@ -77,6 +89,10 @@ async function fetchAudioBlob(
   const cached = audioCache.get(key);
   if (cached) return cached;
 
+  // Strip markdown so TTS never reads asterisks, hashes, etc.
+  const cleanText = stripMarkdown(text);
+  if (!cleanText) return null;
+
   let response: Response;
   let isMp3 = true;
 
@@ -84,7 +100,7 @@ async function fetchAudioBlob(
     response = await fetch('/api/tts-ws', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, language_code: languageCode }),
+      body: JSON.stringify({ text: cleanText, language_code: languageCode }),
       signal,
     });
     if (!response.ok) throw new Error('ws-fail');
@@ -94,7 +110,7 @@ async function fetchAudioBlob(
     response = await fetch('/api/tts-stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, language_code: languageCode }),
+      body: JSON.stringify({ text: cleanText, language_code: languageCode }),
       signal,
     });
     if (!response.ok) return null;

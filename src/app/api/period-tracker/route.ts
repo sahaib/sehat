@@ -226,6 +226,7 @@ Safety rules:
 - ALWAYS encourage consulting a healthcare provider for persistent or severe symptoms.
 - Be culturally sensitive — many Indian families don't discuss this openly.
 
+Format: Use **bold** for key medical terms. Use bullet points for lists. Keep paragraphs short.
 Respond in ${langName}. Keep answers concise (2-4 paragraphs max). Use simple words.
 If the user's message is not about menstrual/reproductive health, gently redirect them to the main Sehat triage for other health concerns.`
     : `You are Sehat's menstrual health companion — a warm, knowledgeable AI assistant focused on period health education for women and girls in India, especially in rural areas.
@@ -244,6 +245,7 @@ Safety rules:
 - ALWAYS encourage consulting a healthcare provider for persistent or severe symptoms.
 - Be sensitive to cultural context — many users may be learning about this for the first time.
 
+Format: Use **bold** for key medical terms. Use bullet points for lists. Keep paragraphs short.
 Respond in ${langName}. Keep answers concise (2-4 paragraphs max). Use simple words.
 If the user's message is not about menstrual/reproductive health, gently redirect them to the main Sehat triage for other health concerns.`;
 

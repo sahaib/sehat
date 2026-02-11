@@ -3,6 +3,7 @@
 import { TriageResult as TriageResultType, Severity, Language } from '@/types';
 import { SEVERITY_CONFIG, URGENCY_LABELS, SUPPORTED_LANGUAGES } from '@/lib/constants';
 import ReadAloudButton from './ReadAloudButton';
+import { inlineFormat } from './RenderMarkdown';
 
 interface TriageResultProps {
   result: TriageResultType;
@@ -84,7 +85,7 @@ export default function TriageResult({ result, language }: TriageResultProps) {
         <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
           Where to go
         </h3>
-        <p className="text-lg font-medium text-gray-800">{result.action_plan.go_to}</p>
+        <p className="text-lg font-medium text-gray-800">{inlineFormat(result.action_plan.go_to)}</p>
       </div>
 
       {/* Emergency numbers — ONLY for emergency/urgent */}
@@ -124,7 +125,7 @@ export default function TriageResult({ result, language }: TriageResultProps) {
                                text-sm font-bold flex items-center justify-center mt-0.5">
                   {i + 1}
                 </span>
-                <span className="text-base">{step}</span>
+                <span className="text-base">{inlineFormat(step)}</span>
               </li>
             ))}
           </ol>
@@ -148,7 +149,7 @@ export default function TriageResult({ result, language }: TriageResultProps) {
             {result.red_flags.map((flag, i) => (
               <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
                 <span className="text-emergency-500 mt-1" aria-hidden="true">&#8226;</span>
-                {flag}
+                <span>{inlineFormat(flag)}</span>
               </li>
             ))}
           </ul>
@@ -165,7 +166,7 @@ export default function TriageResult({ result, language }: TriageResultProps) {
             {result.action_plan.do_not.map((item, i) => (
               <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
                 <span className="text-emergency-500 font-bold" aria-hidden="true">&#10005;</span>
-                {item}
+                <span>{inlineFormat(item)}</span>
               </li>
             ))}
           </ul>

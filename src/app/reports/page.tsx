@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { TriageResult as TriageResultType, Severity } from '@/types';
 import { SEVERITY_CONFIG } from '@/lib/constants';
+import RenderMarkdown from '@/components/RenderMarkdown';
 
 interface TriageReport {
   session_id: string;
@@ -169,9 +170,9 @@ export default function ReportsPage() {
                             {r.action_plan?.tell_doctor?.english && (
                               <div>
                                 <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Clinical Summary</h4>
-                                <p className="text-sm text-gray-800 bg-gray-50 rounded-lg p-3 leading-relaxed">
-                                  {r.action_plan.tell_doctor.english}
-                                </p>
+                                <div className="text-sm text-gray-800 bg-gray-50 rounded-lg p-3 leading-relaxed">
+                                  <RenderMarkdown text={r.action_plan.tell_doctor.english} />
+                                </div>
                               </div>
                             )}
 
@@ -179,9 +180,9 @@ export default function ReportsPage() {
                               r.action_plan.tell_doctor.local.trim().toLowerCase() !== r.action_plan.tell_doctor.english?.trim().toLowerCase() && (
                               <div>
                                 <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Patient Language</h4>
-                                <p className="text-sm text-gray-800 bg-gray-50 rounded-lg p-3 leading-relaxed">
-                                  {r.action_plan.tell_doctor.local}
-                                </p>
+                                <div className="text-sm text-gray-800 bg-gray-50 rounded-lg p-3 leading-relaxed">
+                                  <RenderMarkdown text={r.action_plan.tell_doctor.local} />
+                                </div>
                               </div>
                             )}
 
@@ -247,8 +248,8 @@ export default function ReportsPage() {
                             </span>
                           </div>
 
-                          <div className="text-sm text-gray-800 bg-gray-50 rounded-lg p-3 leading-relaxed whitespace-pre-wrap max-h-60 overflow-y-auto">
-                            {doc.analysis}
+                          <div className="text-sm text-gray-800 bg-gray-50 rounded-lg p-3 leading-relaxed max-h-60 overflow-y-auto">
+                            <RenderMarkdown text={doc.analysis} />
                           </div>
                         </div>
 

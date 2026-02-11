@@ -8,6 +8,7 @@ import ConversationThread from '@/components/ConversationThread';
 import TriageResult from '@/components/TriageResult';
 import DoctorSummary from '@/components/DoctorSummary';
 import ThinkingDisplay from '@/components/ThinkingDisplay';
+import RenderMarkdown from '@/components/RenderMarkdown';
 
 interface SessionDetail {
   session: {
@@ -175,7 +176,7 @@ export default function SessionDetailPage() {
           <>
             {result.is_medical_query === false ? (
               <div className="bg-white rounded-2xl border border-gray-200 p-5">
-                <p className="text-gray-600 whitespace-pre-wrap">{result.redirect_message}</p>
+                <div className="text-gray-600"><RenderMarkdown text={result.redirect_message || ''} /></div>
               </div>
             ) : (
               <>
@@ -197,7 +198,7 @@ export default function SessionDetailPage() {
           <div className="text-center py-12 space-y-2">
             <p className="text-gray-400">No detailed data available for this session.</p>
             {session.reasoning_summary && (
-              <p className="text-sm text-gray-500 max-w-md mx-auto">{session.reasoning_summary}</p>
+              <div className="text-sm text-gray-500 max-w-md mx-auto"><RenderMarkdown text={session.reasoning_summary} /></div>
             )}
           </div>
         )}

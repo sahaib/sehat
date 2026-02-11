@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Language } from '@/types';
 import { SUPPORTED_LANGUAGES } from '@/lib/constants';
 import ReadAloudButton from '@/components/ReadAloudButton';
+import RenderMarkdown from '@/components/RenderMarkdown';
 
 interface PeriodCycle {
   id: string;
@@ -329,8 +330,8 @@ export default function PeriodHealthPage() {
       )}
       {aiLoading && (<div className="flex items-center gap-2 text-sm text-pink-500"><div className="animate-spin w-4 h-4 border-2 border-pink-200 border-t-pink-500 rounded-full" />{t('thinking', language)}</div>)}
       {aiAnswer && (
-        <div className="bg-pink-50/50 rounded-xl p-4 text-sm text-gray-700 leading-relaxed whitespace-pre-wrap animate-fade-in">
-          {aiAnswer}
+        <div className="bg-pink-50/50 rounded-xl p-4 text-sm text-gray-700 leading-relaxed animate-fade-in">
+          <RenderMarkdown text={aiAnswer} />
           <div className="mt-3 pt-2 border-t border-pink-100 flex items-center gap-2">
             <ReadAloudButton text={aiAnswer} languageCode={speechCode} size="sm" />
             <span className="text-[10px] text-gray-400 italic">{t('aiDisclaimer', language)}</span>
