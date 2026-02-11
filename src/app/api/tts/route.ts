@@ -29,12 +29,12 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'api-subscription-key': apiKey,
+        'API-Subscription-Key': apiKey,
       },
       body: JSON.stringify({
-        inputs: [trimmedText],
+        inputs: trimmedText,
         target_language_code: language_code || 'en-IN',
-        speaker: 'anushka',
+        speaker: 'meera',
         model: 'bulbul:v2',
         pace: 1.0,
         pitch: 0.0,
