@@ -10,8 +10,9 @@ interface VoiceInputProps {
   disabled: boolean;
 }
 
-const WHISPER_LANG_MAP: Record<Language, string> = {
-  hi: 'hi', ta: 'ta', te: 'te', mr: 'mr', kn: 'kn', bn: 'bn', en: 'en',
+// BCP-47 language codes for Sarvam Saarika STT
+const SARVAM_LANG_MAP: Record<Language, string> = {
+  hi: 'hi-IN', ta: 'ta-IN', te: 'te-IN', mr: 'mr-IN', kn: 'kn-IN', bn: 'bn-IN', en: 'en-IN',
 };
 
 const LISTENING_LABELS: Record<Language, string> = {
@@ -37,7 +38,7 @@ export default function VoiceInput({
         const formData = new FormData();
         const ext = blob.type.includes('webm') ? 'webm' : 'mp4';
         formData.append('audio', blob, `recording.${ext}`);
-        formData.append('language', WHISPER_LANG_MAP[language]);
+        formData.append('language', SARVAM_LANG_MAP[language]);
         const response = await fetch('/api/transcribe', { method: 'POST', body: formData });
         if (!response.ok) throw new Error('Transcription failed');
         const data = await response.json();
