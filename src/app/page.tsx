@@ -1,8 +1,8 @@
 'use client';
 
 import { useReducer, useCallback, useRef, useEffect, useState, useMemo } from 'react';
-import { UserButton, SignInButton } from '@clerk/nextjs';
-import { useAuth } from '@/hooks/useAuth';
+import { CLERK_ENABLED } from '@/hooks/useAuth';
+import ClerkAuthButtons from '@/components/ClerkAuthButtons';
 import {
   ConversationState,
   ConversationAction,
@@ -176,7 +176,6 @@ export default function Home() {
     ...initialState,
     sessionId: '',
   });
-  const { isSignedIn, clerkEnabled } = useAuth();
   const [showProfileForm, setShowProfileForm] = useState(false);
 
   useEffect(() => {
@@ -426,27 +425,8 @@ export default function Home() {
               </button>
             )}
             {mounted && (
-              isSignedIn ? (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setShowProfileForm(true)}
-                    className="text-xs text-teal-600 hover:text-teal-700 hover:bg-teal-50
-                               px-2 py-1.5 rounded-lg transition-colors"
-                    aria-label="Health profile"
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                    </svg>
-                  </button>
-                  {clerkEnabled && <UserButton afterSignOutUrl="/" />}
-                </div>
-              ) : clerkEnabled ? (
-                <SignInButton mode="modal">
-                  <button className="text-xs text-teal-600 hover:text-teal-700 hover:bg-teal-50
-                                     px-3 py-1.5 rounded-lg border border-teal-200 transition-colors font-medium">
-                    Sign in
-                  </button>
-                </SignInButton>
+              CLERK_ENABLED ? (
+                <ClerkAuthButtons onProfileClick={() => setShowProfileForm(true)} />
               ) : (
                 <a
                   href="/sign-in"

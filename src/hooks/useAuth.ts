@@ -1,17 +1,7 @@
 'use client';
 
-import { useUser } from '@clerk/nextjs';
-
 /**
- * Safe wrapper around Clerk's useUser hook.
- * Returns { isSignedIn: false } when Clerk is not configured.
+ * Whether Clerk is configured. This is a build-time constant
+ * inlined by Next.js from the NEXT_PUBLIC_ env var.
  */
-export function useAuth() {
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const { isSignedIn, user, isLoaded } = useUser();
-    return { isSignedIn: !!isSignedIn, user, isLoaded, clerkEnabled: true };
-  } catch {
-    return { isSignedIn: false, user: null, isLoaded: true, clerkEnabled: false };
-  }
-}
+export const CLERK_ENABLED = !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;

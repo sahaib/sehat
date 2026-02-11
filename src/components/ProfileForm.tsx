@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
 import { Language } from '@/types';
 
 interface ProfileFormProps {
@@ -15,7 +14,6 @@ const CONDITION_OPTIONS = [
 ];
 
 export default function ProfileForm({ onClose, language }: ProfileFormProps) {
-  const { user } = useAuth();
   const [age, setAge] = useState('');
   const [gender, setGender] = useState('');
   const [conditions, setConditions] = useState<string[]>([]);
@@ -24,7 +22,6 @@ export default function ProfileForm({ onClose, language }: ProfileFormProps) {
 
   // Load existing profile
   useEffect(() => {
-    if (!user) return;
     fetch('/api/profile')
       .then(res => res.ok ? res.json() : null)
       .then(data => {
@@ -36,7 +33,7 @@ export default function ProfileForm({ onClose, language }: ProfileFormProps) {
         setLoaded(true);
       })
       .catch(() => setLoaded(true));
-  }, [user]);
+  }, []);
 
   const toggleCondition = (c: string) => {
     setConditions(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]);
