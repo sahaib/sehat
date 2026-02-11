@@ -57,7 +57,7 @@ async function synthesizeChunk(
     body: JSON.stringify({
       text,
       target_language_code: languageCode,
-      speaker: 'meera',
+      speaker: 'anushka',
       model: 'bulbul:v2',
       pace: 1.0,
       pitch: 0.0,
