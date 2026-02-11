@@ -1,0 +1,101 @@
+-- ============================================================
+-- Sehat (सेहत) — Supabase Schema
+-- Run this in your Supabase SQL Editor (supabase.com > SQL Editor)
+-- ============================================================
+
+-- ─── 1. User Profiles ───────────────────────────────────────
+-- Stores optional health profile linked to Clerk auth.
+-- All fields optional — users can skip or fill later.
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  clerk_user_id TEXT UNIQUE NOT NULL,
+  age INTEGER CHECK (age > 0 AND age < 150),
+  gender TEXT CHECK (gender IN ('male', 'female', 'other', 'prefer_not_to_say')),
+  pre_existing_conditions TEXT[] DEFAULT '{}',
+  preferred_language TEXT DEFAULT 'hi',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Index for fast lookup by Clerk user
+CREATE INDEX IF NOT EXISTS idx_profiles_clerk_user ON profiles(clerk_user_id);
+
+-- ─── 2. Triage Sessions ─────────────────────────────────────
+-- Every triage interaction is logged (zero PII in symptoms —
+-- only the model-identified symptom names, not raw user text).
+-- Anonymous users have null clerk_user_id.
+CREATE TABLE IF NOT EXISTS triage_sessions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  session_id TEXT NOT NULL,           -- frontend-generated session ID
+  clerk_user_id TEXT,                 -- nullable for anonymous users
+  language TEXT NOT NULL,
+  severity TEXT CHECK (severity IN ('emergency', 'urgent', 'routine', 'self_care')),
+  confidence REAL CHECK (confidence >= 0 AND confidence <= 1),
+  symptoms TEXT[] DEFAULT '{}',
+  input_mode TEXT DEFAULT 'text' CHECK (input_mode IN ('text', 'voice', 'voice_conversation')),
+  reasoning_summary TEXT,
+  is_emergency BOOLEAN DEFAULT FALSE,
+  is_medical_query BOOLEAN DEFAULT TRUE,
+  follow_up_count INTEGER DEFAULT 0,
+  latency_ms INTEGER,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Index for user history lookups
+CREATE INDEX IF NOT EXISTS idx_triage_clerk_user ON triage_sessions(clerk_user_id);
+CREATE INDEX IF NOT EXISTS idx_triage_session ON triage_sessions(session_id);
+CREATE INDEX IF NOT EXISTS idx_triage_created ON triage_sessions(created_at DESC);
+
+-- ─── 3. Medical Uploads ─────────────────────────────────────
+-- Stores analysis results from uploaded medical documents.
+-- We do NOT store the actual file — only the AI analysis text.
+CREATE TABLE IF NOT EXISTS medical_uploads (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  clerk_user_id TEXT,                 -- nullable for anonymous users
+  session_id TEXT,                    -- link to triage session context
+  file_name TEXT NOT NULL,
+  file_type TEXT NOT NULL CHECK (file_type IN ('report', 'prescription', 'image', 'other')),
+  mime_type TEXT,
+  analysis TEXT,
+  language TEXT DEFAULT 'en',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_uploads_clerk_user ON medical_uploads(clerk_user_id);
+
+-- ─── 4. Row Level Security ──────────────────────────────────
+-- Enable RLS on all tables. API routes use service_role key
+-- which bypasses RLS, but this protects against direct access.
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE triage_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE medical_uploads ENABLE ROW LEVEL SECURITY;
+
+-- Profiles: users can read/update their own
+CREATE POLICY "profiles_select_own" ON profiles
+  FOR SELECT USING (true);  -- service_role handles auth
+
+CREATE POLICY "profiles_insert" ON profiles
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "profiles_update_own" ON profiles
+  FOR UPDATE USING (true);
+
+-- Triage: insert-only from API, users read their own
+CREATE POLICY "triage_insert" ON triage_sessions
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "triage_select_own" ON triage_sessions
+  FOR SELECT USING (true);
+
+-- Uploads: insert-only from API, users read their own
+CREATE POLICY "uploads_insert" ON medical_uploads
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "uploads_select_own" ON medical_uploads
+  FOR SELECT USING (true);
+
+-- ─── 5. Storage Bucket (optional) ───────────────────────────
+-- Uncomment if you want to store original files in Supabase Storage:
+-- INSERT INTO storage.buckets (id, name, public)
+-- VALUES ('medical-files', 'medical-files', false)
+-- ON CONFLICT DO NOTHING;

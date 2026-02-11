@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { saveMedicalUpload } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -85,6 +86,22 @@ export async function POST(request: NextRequest) {
       .filter((block): block is Anthropic.Messages.TextBlock => block.type === 'text')
       .map((block) => block.text)
       .join('\n');
+
+    // Determine file type category from content
+    const lowerAnalysis = analysisText.toLowerCase();
+    const docType: 'report' | 'prescription' | 'image' | 'other' =
+      lowerAnalysis.includes('prescription') ? 'prescription' :
+      lowerAnalysis.includes('lab report') || lowerAnalysis.includes('test report') ? 'report' :
+      isImage ? 'image' : 'other';
+
+    // Persist to Supabase (fire-and-forget)
+    saveMedicalUpload({
+      file_name: file.name,
+      file_type: docType,
+      mime_type: file.type,
+      analysis: analysisText,
+      language,
+    });
 
     return Response.json({ analysis: analysisText });
   } catch (error) {
