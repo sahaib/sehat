@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     });
     const sarvamForm = new FormData();
     sarvamForm.append('file', cleanFile, cleanFile.name);
-    sarvamForm.append('model', 'saarika:v2');
+    sarvamForm.append('model', 'saarika:v2.5');
     // Use language hint or auto-detect
     sarvamForm.append('language_code', languageHint || 'unknown');
 
