@@ -2,6 +2,7 @@
 
 import { TriageResult as TriageResultType, Severity, Language } from '@/types';
 import { SEVERITY_CONFIG, URGENCY_LABELS, SUPPORTED_LANGUAGES } from '@/lib/constants';
+import ReadAloudButton from './ReadAloudButton';
 
 interface TriageResultProps {
   result: TriageResultType;
@@ -37,16 +38,6 @@ function ConfidenceBar({ confidence }: { confidence: number }) {
       <span className="font-medium text-gray-700">{percent}%</span>
     </div>
   );
-}
-
-function speakText(text: string, langCode: string = 'en-IN') {
-  if ('speechSynthesis' in window) {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = langCode;
-    utterance.rate = 0.9;
-    window.speechSynthesis.speak(utterance);
-  }
 }
 
 export default function TriageResult({ result, language }: TriageResultProps) {
@@ -181,18 +172,10 @@ export default function TriageResult({ result, language }: TriageResultProps) {
         </div>
       )}
 
-      {/* Read aloud button */}
-      <button
-        onClick={() => speakText(actionPlanText, speechCode)}
-        className="flex items-center gap-2 text-sm text-teal-600 hover:text-teal-700
-                   font-medium transition-colors mt-2 active:scale-95"
-      >
-        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M13.5 4.06c0-1.336-1.616-2.005-2.56-1.06l-4.5 4.5H4.508c-1.141 0-2.318.664-2.66 1.905A9.76 9.76 0 001.5 12c0 .898.121 1.768.35 2.595.341 1.24 1.518 1.905 2.659 1.905h1.93l4.5 4.5c.945.945 2.561.276 2.561-1.06V4.06zM18.584 5.106a.75.75 0 011.06 0c3.808 3.807 3.808 9.98 0 13.788a.75.75 0 01-1.06-1.06 8.25 8.25 0 000-11.668.75.75 0 010-1.06z" />
-          <path d="M15.932 7.757a.75.75 0 011.061 0 6 6 0 010 8.486.75.75 0 01-1.06-1.061 4.5 4.5 0 000-6.364.75.75 0 010-1.06z" />
-        </svg>
-        Read aloud
-      </button>
+      {/* Read aloud button — Sarvam TTS */}
+      <div className="mt-2">
+        <ReadAloudButton text={actionPlanText} languageCode={speechCode} size="sm" />
+      </div>
 
       {/* Disclaimer */}
       <div className="mt-4 pt-3 border-t border-gray-200/50">
