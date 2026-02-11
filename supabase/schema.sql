@@ -27,7 +27,7 @@ CREATE INDEX IF NOT EXISTS idx_profiles_clerk_user ON profiles(clerk_user_id);
 -- Anonymous users have null clerk_user_id.
 CREATE TABLE IF NOT EXISTS triage_sessions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  session_id TEXT NOT NULL,           -- frontend-generated session ID
+  session_id TEXT UNIQUE NOT NULL,    -- frontend-generated session ID (unique for upsert)
   clerk_user_id TEXT,                 -- nullable for anonymous users
   language TEXT NOT NULL,
   severity TEXT CHECK (severity IN ('emergency', 'urgent', 'routine', 'self_care')),
@@ -168,7 +168,32 @@ CREATE POLICY "telemetry_insert" ON telemetry_events
 CREATE POLICY "telemetry_select" ON telemetry_events
   FOR SELECT USING (true);
 
--- ─── 8. Storage Bucket (optional) ───────────────────────────
+-- ─── 8. Period Health Tracking ────────────────────────────
+-- AI-powered menstrual health companion for rural Indian women.
+CREATE TABLE IF NOT EXISTS period_cycles (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  clerk_user_id TEXT NOT NULL,
+  cycle_start DATE NOT NULL,
+  cycle_end DATE,
+  period_length INTEGER,       -- days of bleeding
+  cycle_length INTEGER,        -- days between cycle starts
+  flow_level TEXT CHECK (flow_level IN ('light', 'medium', 'heavy')),
+  symptoms TEXT[] DEFAULT '{}',
+  mood TEXT,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_period_clerk_user ON period_cycles(clerk_user_id);
+CREATE INDEX IF NOT EXISTS idx_period_start ON period_cycles(cycle_start DESC);
+
+ALTER TABLE period_cycles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "period_insert" ON period_cycles FOR INSERT WITH CHECK (true);
+CREATE POLICY "period_select" ON period_cycles FOR SELECT USING (true);
+CREATE POLICY "period_update" ON period_cycles FOR UPDATE USING (true);
+CREATE POLICY "period_delete" ON period_cycles FOR DELETE USING (true);
+
+-- ─── 9. Storage Bucket (optional) ───────────────────────────
 -- Uncomment if you want to store original files in Supabase Storage:
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('medical-files', 'medical-files', false)

@@ -129,12 +129,12 @@ export async function POST(request: NextRequest) {
           telemetry.recordTriage(tel);
 
           // Persist to Supabase (fire-and-forget)
-          if (tel.severity) {
+          if (tel.severity || tel.isEmergency) {
             saveTriageSession({
               session_id: sessionId || 'unknown',
               clerk_user_id: clerkUserId,
               language,
-              severity: tel.severity,
+              severity: tel.severity || 'emergency',
               confidence: tel.confidence,
               symptoms: resultSymptoms,
               input_mode: (inputMode as string) || 'text',
@@ -166,6 +166,23 @@ export async function POST(request: NextRequest) {
           tel.hadError = true;
           tel.latencyMs = Date.now() - startTime;
           telemetry.recordTriage(tel);
+
+          // Persist error sessions too so they show in history
+          saveTriageSession({
+            session_id: sessionId || 'unknown',
+            clerk_user_id: clerkUserId,
+            language,
+            severity: tel.severity || 'routine',
+            confidence: tel.confidence,
+            symptoms: resultSymptoms,
+            input_mode: (inputMode as string) || 'text',
+            reasoning_summary: `Error: ${errorMessage}`,
+            is_emergency: tel.isEmergency,
+            is_medical_query: tel.isMedicalQuery,
+            follow_up_count: tel.followUpCount,
+            latency_ms: tel.latencyMs,
+          });
+
           controller.close();
         }
       },

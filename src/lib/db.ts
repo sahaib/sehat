@@ -71,7 +71,7 @@ export function saveTriageSession(record: TriageSessionRecord): void {
 
   supabase
     .from('triage_sessions')
-    .insert(record)
+    .upsert(record, { onConflict: 'session_id' })
     .then(({ error }) => {
       if (error) {
         console.error('[db] Failed to save triage session:', error.message);
@@ -130,6 +130,32 @@ export function saveTriageResult(record: TriageResultRecord): void {
       if (error) {
         console.error('[db] Failed to save triage result:', error.message);
       }
+    });
+}
+
+// ─── Period Health ───────────────────────────────────
+
+export interface PeriodCycleRecord {
+  clerk_user_id: string;
+  cycle_start: string; // ISO date
+  cycle_end?: string | null;
+  period_length?: number | null;
+  cycle_length?: number | null;
+  flow_level?: 'light' | 'medium' | 'heavy' | null;
+  symptoms?: string[];
+  mood?: string | null;
+  notes?: string | null;
+}
+
+export function savePeriodCycle(record: PeriodCycleRecord): void {
+  const supabase = getServiceClient();
+  if (!supabase) return;
+
+  supabase
+    .from('period_cycles')
+    .insert(record)
+    .then(({ error }) => {
+      if (error) console.error('[db] Failed to save period cycle:', error.message);
     });
 }
 

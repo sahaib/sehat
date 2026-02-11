@@ -7,12 +7,22 @@
  * - Fallback to REST-based /api/tts-stream
  */
 
-// ─── Cache ──────────────────────────────────────
+// ─── Cache (LRU-bounded) ────────────────────────
 // Key = text+lang, Value = complete audio Blob ready to play
+const MAX_CACHE_ENTRIES = 50;
 const audioCache = new Map<string, Blob>();
 
 function cacheKey(text: string, lang: string): string {
   return `${lang}:${text.slice(0, 200)}`;
+}
+
+function cacheSet(key: string, blob: Blob): void {
+  // Evict oldest entries if cache is full
+  if (audioCache.size >= MAX_CACHE_ENTRIES) {
+    const oldest = audioCache.keys().next().value;
+    if (oldest !== undefined) audioCache.delete(oldest);
+  }
+  cacheSet(key, blob);
 }
 
 // ─── Helpers ────────────────────────────────────
@@ -128,7 +138,7 @@ async function fetchAudioBlob(
   const blob = new Blob([merged.buffer as ArrayBuffer], { type: mimeType });
 
   // Cache for instant replay
-  audioCache.set(key, blob);
+  cacheSet(key, blob);
   return blob;
 }
 
