@@ -10,7 +10,18 @@ interface DashboardData {
   severityDistribution: Record<string, number>;
   topSymptoms: Array<{ symptom: string; count: number }>;
   timeline: Array<{ date: string; emergency: number; urgent: number; routine: number; self_care: number }>;
+  trends?: {
+    sessions: 'up' | 'down' | 'stable';
+    emergencies: 'up' | 'down' | 'stable';
+    sessionsThisWeek: number;
+    sessionsPrevWeek: number;
+  };
 }
+
+const TREND_ICONS: Record<string, string> = { up: '\u2191', down: '\u2193', stable: '\u2192' };
+const TREND_COLORS: Record<string, string> = {
+  up: 'text-orange-500', down: 'text-green-500', stable: 'text-gray-400',
+};
 
 const SEVERITY_COLORS: Record<string, string> = {
   emergency: 'bg-red-500',
@@ -69,8 +80,28 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-teal-200 border-t-teal-600 rounded-full" />
+      <div className="min-h-screen bg-gray-50">
+        <header className="bg-white border-b border-gray-200 px-4 py-4">
+          <div className="max-w-4xl mx-auto flex items-center gap-2">
+            <div className="w-5 h-5 rounded bg-gray-200 animate-pulse" />
+            <div className="w-32 h-5 rounded bg-gray-200 animate-pulse" />
+          </div>
+        </header>
+        <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl border border-gray-200 p-5">
+                <div className="w-20 h-3 bg-gray-100 rounded animate-pulse mb-2" />
+                <div className="w-12 h-8 bg-gray-100 rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[...Array(2)].map((_, i) => (
+              <div key={i} className="bg-white rounded-2xl border border-gray-200 p-5 h-48 animate-pulse" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -143,11 +174,13 @@ export default function DashboardPage() {
                 label="Consultations"
                 value={data.total}
                 accent="text-teal-700"
+                sub={data.trends ? `${TREND_ICONS[data.trends.sessions]} ${data.trends.sessionsThisWeek} this week` : undefined}
               />
               <KPICard
                 label="Emergencies"
                 value={data.emergencyCount}
                 accent={data.emergencyCount > 0 ? 'text-red-600' : 'text-gray-800'}
+                sub={data.trends && data.emergencyCount > 0 ? `Trend: ${TREND_ICONS[data.trends.emergencies]}` : undefined}
               />
               <KPICard
                 label="Avg Confidence"
