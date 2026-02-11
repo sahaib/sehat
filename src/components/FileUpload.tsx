@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { useAuth } from '@/hooks/useAuth';
 import { Language } from '@/types';
 
 interface FileUploadProps {
@@ -9,18 +8,17 @@ interface FileUploadProps {
   disabled: boolean;
 }
 
-const LABELS: Record<Language, { upload: string; analyzing: string; signin: string }> = {
-  hi: { upload: 'रिपोर्ट अपलोड करें', analyzing: 'विश्लेषण हो रहा है...', signin: 'साइन इन करें' },
-  en: { upload: 'Upload report', analyzing: 'Analyzing...', signin: 'Sign in first' },
-  ta: { upload: 'அறிக்கை பதிவேற்றவும்', analyzing: 'பகுப்பாய்வு...', signin: 'உள்நுழையவும்' },
-  te: { upload: 'రిపోర్ట్ అప్‌లోడ్', analyzing: 'విశ్లేషణ...', signin: 'సైన్ ఇన్ చేయండి' },
-  mr: { upload: 'रिपोर्ट अपलोड करा', analyzing: 'विश्लेषण...', signin: 'साइन इन करा' },
-  kn: { upload: 'ವರದಿ ಅಪ್‌ಲೋಡ್', analyzing: 'ವಿಶ್ಲೇಷಣೆ...', signin: 'ಸೈನ್ ಇನ್ ಮಾಡಿ' },
-  bn: { upload: 'রিপোর্ট আপলোড', analyzing: 'বিশ্লেষণ...', signin: 'সাইন ইন করুন' },
+const LABELS: Record<Language, { upload: string; analyzing: string }> = {
+  hi: { upload: 'रिपोर्ट अपलोड करें', analyzing: 'विश्लेषण हो रहा है...' },
+  en: { upload: 'Upload report', analyzing: 'Analyzing...' },
+  ta: { upload: 'அறிக்கை பதிவேற்றவும்', analyzing: 'பகுப்பாய்வு...' },
+  te: { upload: 'రిపోర్ట్ అప్‌లోడ్', analyzing: 'విశ్లేషణ...' },
+  mr: { upload: 'रिपोर्ट अपलोड करा', analyzing: 'विश्लेषण...' },
+  kn: { upload: 'ವರದಿ ಅಪ್‌ಲೋಡ್', analyzing: 'ವಿಶ್ಲೇಷಣೆ...' },
+  bn: { upload: 'রিপোর্ট আপলোড', analyzing: 'বিশ্লেষণ...' },
 };
 
 export default function FileUpload({ language, disabled }: FileUploadProps) {
-  const { isSignedIn } = useAuth();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -72,13 +70,7 @@ export default function FileUpload({ language, disabled }: FileUploadProps) {
         className="hidden"
       />
       <button
-        onClick={() => {
-          if (!isSignedIn) {
-            setError(t.signin);
-            return;
-          }
-          fileRef.current?.click();
-        }}
+        onClick={() => fileRef.current?.click()}
         disabled={disabled || isAnalyzing}
         className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium
                    text-teal-600 hover:text-teal-700 hover:bg-teal-50

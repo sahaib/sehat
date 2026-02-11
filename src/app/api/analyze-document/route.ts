@@ -24,22 +24,7 @@ IMPORTANT:
 - Include a disclaimer that this is AI analysis and they should consult their doctor
 - Never make a diagnosis — only explain what the document contains`;
 
-async function getClerkUserId(): Promise<string | null> {
-  try {
-    const { auth } = await import('@clerk/nextjs/server');
-    const { userId } = await auth();
-    return userId;
-  } catch {
-    return null;
-  }
-}
-
 export async function POST(request: NextRequest) {
-  const userId = await getClerkUserId();
-  if (!userId) {
-    return Response.json({ error: 'Sign in to upload documents' }, { status: 401 });
-  }
-
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;

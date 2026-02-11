@@ -90,22 +90,30 @@ export default function SignUpPrompt({ language, onProfileClick }: SignUpPromptP
     );
   }
 
-  // Anonymous users: prompt to sign up (only if Clerk is enabled)
-  if (!clerkEnabled) return null;
-
+  // Anonymous users: prompt to sign up
   return (
     <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4 animate-fade-in">
       <p className="text-sm font-semibold text-teal-800">{t.title}</p>
       <p className="text-xs text-teal-600 mt-1">{t.subtitle}</p>
       <div className="flex gap-2 mt-3">
-        <SignInButton mode="modal">
-          <button
+        {clerkEnabled ? (
+          <SignInButton mode="modal">
+            <button
+              className="flex-1 py-2 bg-teal-600 text-white text-sm font-semibold
+                         rounded-xl hover:bg-teal-700 transition-colors active:scale-[0.98]"
+            >
+              {t.cta}
+            </button>
+          </SignInButton>
+        ) : (
+          <a
+            href="/sign-up"
             className="flex-1 py-2 bg-teal-600 text-white text-sm font-semibold
-                       rounded-xl hover:bg-teal-700 transition-colors active:scale-[0.98]"
+                       rounded-xl hover:bg-teal-700 transition-colors active:scale-[0.98] text-center"
           >
             {t.cta}
-          </button>
-        </SignInButton>
+          </a>
+        )}
         <button
           onClick={() => setDismissed(true)}
           className="px-4 py-2 text-sm text-teal-600 hover:bg-teal-100 rounded-xl transition-colors"
