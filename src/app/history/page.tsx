@@ -99,7 +99,15 @@ export default function HistoryPage() {
             </Link>
             <h1 className="text-lg font-bold text-gray-800">Chat History</h1>
           </div>
-          <span className="text-xs text-gray-400">{total} session{total !== 1 ? 's' : ''}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-400 mr-1">{total} session{total !== 1 ? 's' : ''}</span>
+            <Link href="/dashboard" className="text-xs text-gray-500 hover:text-teal-600 px-3 py-1.5 rounded-lg border border-gray-200 hover:border-teal-200 transition-colors">
+              Dashboard
+            </Link>
+            <Link href="/reports" className="text-xs text-gray-500 hover:text-teal-600 px-3 py-1.5 rounded-lg border border-gray-200 hover:border-teal-200 transition-colors">
+              Reports
+            </Link>
+          </div>
         </div>
       </header>
 
