@@ -100,4 +100,5 @@ export type ConversationAction =
   | { type: 'STREAM_ERROR'; message: string }
   | { type: 'STREAM_END' }
   | { type: 'CLIENT_EMERGENCY'; detection: EmergencyDetection }
+  | { type: 'RESTORE_SESSION'; sessionId: string; messages: Message[]; result: TriageResult | null; thinkingContent: string; language: Language }
   | { type: 'RESET' };

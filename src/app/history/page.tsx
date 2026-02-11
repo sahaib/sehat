@@ -129,50 +129,63 @@ export default function HistoryPage() {
             const config = s.severity ? SEVERITY_CONFIG[s.severity] : null;
             const date = new Date(s.created_at);
             return (
-              <Link
+              <div
                 key={s.session_id}
-                href={`/history/${s.session_id}`}
-                className="block bg-white rounded-2xl border border-gray-200 p-4 hover:border-teal-300 hover:shadow-sm transition-all"
+                className="bg-white rounded-2xl border border-gray-200 p-4 hover:border-teal-300 hover:shadow-sm transition-all"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      {config && (
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${config.bgColor} ${config.textColor}`}>
-                          {config.icon} {config.label}
+                <Link href={`/history/${s.session_id}`} className="block">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        {config && (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold ${config.bgColor} ${config.textColor}`}>
+                            {config.icon} {config.label}
+                          </span>
+                        )}
+                        <span className="text-xs text-gray-400">
+                          {LANG_LABELS[s.language] || s.language}
                         </span>
+                        {s.is_emergency && (
+                          <span className="text-xs font-bold text-red-600">EMERGENCY</span>
+                        )}
+                      </div>
+                      {s.symptoms && s.symptoms.length > 0 && (
+                        <p className="text-sm text-gray-600 truncate">
+                          {s.symptoms.join(', ')}
+                        </p>
                       )}
-                      <span className="text-xs text-gray-400">
-                        {LANG_LABELS[s.language] || s.language}
-                      </span>
-                      {s.is_emergency && (
-                        <span className="text-xs font-bold text-red-600">EMERGENCY</span>
+                      {s.reasoning_summary && (
+                        <p className="text-xs text-gray-400 mt-1 line-clamp-2">
+                          {s.reasoning_summary}
+                        </p>
                       )}
                     </div>
-                    {s.symptoms && s.symptoms.length > 0 && (
-                      <p className="text-sm text-gray-600 truncate">
-                        {s.symptoms.join(', ')}
+                    <div className="flex-shrink-0 text-right">
+                      <p className="text-xs text-gray-400">
+                        {date.toLocaleDateString()}
                       </p>
-                    )}
-                    {s.reasoning_summary && (
-                      <p className="text-xs text-gray-400 mt-1 line-clamp-2">
-                        {s.reasoning_summary}
+                      <p className="text-xs text-gray-300">
+                        {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
-                    )}
+                      <p className="text-[10px] text-gray-300 mt-1 capitalize">
+                        {s.input_mode === 'voice_conversation' ? 'Voice' : s.input_mode}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex-shrink-0 text-right">
-                    <p className="text-xs text-gray-400">
-                      {date.toLocaleDateString()}
-                    </p>
-                    <p className="text-xs text-gray-300">
-                      {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                    <p className="text-[10px] text-gray-300 mt-1 capitalize">
-                      {s.input_mode === 'voice_conversation' ? 'Voice' : s.input_mode}
-                    </p>
-                  </div>
+                </Link>
+                <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-end">
+                  <Link
+                    href={`/?resumeSession=${s.session_id}`}
+                    className="flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700
+                               px-2.5 py-1 rounded-lg hover:bg-teal-50 transition-colors font-medium"
+                  >
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
+                    </svg>
+                    Continue
+                  </Link>
                 </div>
-              </Link>
+              </div>
             );
           })
         )}

@@ -1,6 +1,7 @@
 'use client';
 
-import { useReducer, useCallback, useRef, useEffect, useState, useMemo } from 'react';
+import { useReducer, useCallback, useRef, useEffect, useState, useMemo, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { CLERK_ENABLED } from '@/hooks/useAuth';
 import ClerkAuthButtons from '@/components/ClerkAuthButtons';
 import {
@@ -9,6 +10,7 @@ import {
   StreamEvent,
   Message,
   Language,
+  TriageResult as TriageResultType,
 } from '@/types';
 import { detectEmergency } from '@/lib/emergency-detector';
 import { MAX_FOLLOW_UPS, SUPPORTED_LANGUAGES } from '@/lib/constants';
@@ -159,6 +161,22 @@ function conversationReducer(
         emergencyData: action.detection,
       };
 
+    case 'RESTORE_SESSION': {
+      // Count follow-ups from restored messages
+      const restoredFollowUps = action.messages.filter(
+        (m) => m.role === 'assistant' && m.isFollowUp
+      ).length;
+      return {
+        ...initialState,
+        sessionId: action.sessionId,
+        messages: action.messages,
+        currentResult: action.result,
+        thinkingContent: action.thinkingContent,
+        language: action.language,
+        followUpCount: restoredFollowUps,
+      };
+    }
+
     case 'RESET':
       return {
         ...initialState,
@@ -171,7 +189,19 @@ function conversationReducer(
   }
 }
 
-export default function Home() {
+export default function HomePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-[100dvh]">
+        <div className="animate-spin w-8 h-8 border-4 border-teal-200 border-t-teal-600 rounded-full" />
+      </div>
+    }>
+      <Home />
+    </Suspense>
+  );
+}
+
+function Home() {
   // Generate sessionId on client-side only to avoid SSR hydration mismatch
   const [mounted, setMounted] = useState(false);
   const [state, dispatch] = useReducer(conversationReducer, {
@@ -180,16 +210,71 @@ export default function Home() {
   });
   const [showProfileForm, setShowProfileForm] = useState(false);
   const [userName, setUserName] = useState('');
+  const [resumedDate, setResumedDate] = useState<string | null>(null);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (!mounted) {
       setMounted(true);
-      dispatch({ type: 'RESET' });
       // Load user name from localStorage for personalized greeting
       const savedName = localStorage.getItem('sehat_user_name');
       if (savedName) setUserName(savedName);
+
+      const resumeId = searchParams.get('resumeSession');
+      if (resumeId) {
+        // Restore a previous session
+        (async () => {
+          try {
+            const res = await fetch(`/api/sessions/${resumeId}`);
+            if (!res.ok) {
+              dispatch({ type: 'RESET' });
+              return;
+            }
+            const data: {
+              session: { language: string; created_at: string };
+              messages: Array<{
+                id: string;
+                role: 'user' | 'assistant';
+                content: string;
+                language: string;
+                is_follow_up: boolean;
+                created_at: string;
+              }>;
+              result: TriageResultType | null;
+              thinkingContent: string | null;
+            } = await res.json();
+
+            const msgs: Message[] = data.messages.map((m, i) => ({
+              id: m.id || String(i),
+              role: m.role,
+              content: m.content,
+              timestamp: new Date(m.created_at).getTime(),
+              language: (m.language || data.session.language || 'en') as Language,
+              isFollowUp: m.is_follow_up,
+            }));
+
+            dispatch({
+              type: 'RESTORE_SESSION',
+              sessionId: resumeId,
+              messages: msgs,
+              result: data.result,
+              thinkingContent: data.thinkingContent || '',
+              language: (data.session.language || 'en') as Language,
+            });
+            setResumedDate(
+              new Date(data.session.created_at).toLocaleDateString(undefined, {
+                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+              })
+            );
+          } catch {
+            dispatch({ type: 'RESET' });
+          }
+        })();
+      } else {
+        dispatch({ type: 'RESET' });
+      }
     }
-  }, [mounted]);
+  }, [mounted, searchParams]);
 
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -383,7 +468,12 @@ export default function Home() {
   const handleReset = useCallback(() => {
     abortRef.current?.abort();
     dispatch({ type: 'RESET' });
-  }, []);
+    setResumedDate(null);
+    // Clear resumeSession from URL without full page reload
+    if (searchParams.get('resumeSession')) {
+      window.history.replaceState({}, '', '/');
+    }
+  }, [searchParams]);
 
   // Voice conversation mode
   const [isVoiceMode, setIsVoiceMode] = useState(false);
@@ -602,6 +692,15 @@ export default function Home() {
             <p className="text-gray-400 max-w-sm text-base">
               {WELCOME_SUBTITLES[state.language]}
             </p>
+          </div>
+        )}
+
+        {/* Resumed session banner */}
+        {resumedDate && hasConversation && (
+          <div className="flex items-center justify-center gap-2 text-xs text-gray-400 py-2 animate-fade-in">
+            <div className="h-px flex-1 bg-gray-200/60" />
+            <span className="px-2">Continued from {resumedDate}</span>
+            <div className="h-px flex-1 bg-gray-200/60" />
           </div>
         )}
 
