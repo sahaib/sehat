@@ -16,7 +16,18 @@ async function getClerkUserId(): Promise<string | null> {
   }
 }
 
-// GET — fetch user's period cycles + predictions + insights
+async function getUserGender(userId: string): Promise<string | null> {
+  const supabase = getServiceClient();
+  if (!supabase) return null;
+  const { data } = await supabase
+    .from('profiles')
+    .select('gender')
+    .eq('clerk_user_id', userId)
+    .single();
+  return data?.gender || null;
+}
+
+// GET — fetch user's period cycles + predictions + gender context
 export async function GET(request: NextRequest) {
   const userId = await getClerkUserId();
   if (!userId) {
@@ -28,18 +39,22 @@ export async function GET(request: NextRequest) {
     return Response.json({ error: 'Database not configured' }, { status: 503 });
   }
 
-  const { data: cycles, error } = await supabase
-    .from('period_cycles')
-    .select('*')
-    .eq('clerk_user_id', userId)
-    .order('cycle_start', { ascending: false })
-    .limit(24); // last 2 years of cycles
+  // Fetch gender in parallel with cycles
+  const [gender, cyclesResult] = await Promise.all([
+    getUserGender(userId),
+    supabase
+      .from('period_cycles')
+      .select('*')
+      .eq('clerk_user_id', userId)
+      .order('cycle_start', { ascending: false })
+      .limit(24),
+  ]);
 
-  if (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+  if (cyclesResult.error) {
+    return Response.json({ error: cyclesResult.error.message }, { status: 500 });
   }
 
-  const allCycles = cycles || [];
+  const allCycles = cyclesResult.data || [];
 
   // Compute predictions
   let avgCycleLength = 28; // default
@@ -83,6 +98,7 @@ export async function GET(request: NextRequest) {
   }
 
   return Response.json({
+    gender,
     cycles: allCycles,
     predictions: {
       avgCycleLength,
@@ -104,7 +120,7 @@ export async function POST(request: NextRequest) {
 
   // AI Q&A mode
   if (body.action === 'ask') {
-    return handleAIQuestion(body.question, body.language || 'en', userId);
+    return handleAIQuestion(body.question, body.language || 'en', userId, body.context || 'self');
   }
 
   // Log cycle
@@ -167,7 +183,7 @@ export async function POST(request: NextRequest) {
 }
 
 // AI-powered menstrual health Q&A
-async function handleAIQuestion(question: string, language: string, _userId: string) {
+async function handleAIQuestion(question: string, language: string, _userId: string, context: string) {
   if (!question?.trim()) {
     return Response.json({ error: 'Question is required' }, { status: 400 });
   }
@@ -185,7 +201,34 @@ async function handleAIQuestion(question: string, language: string, _userId: str
   };
   const langName = LANG_MAP[language] || 'the user\'s language';
 
-  const systemPrompt = `You are Sehat's menstrual health companion — a warm, knowledgeable AI assistant focused on period health education for women and girls in India, especially in rural areas.
+  const isAlly = context === 'ally';
+
+  const systemPrompt = isAlly
+    ? `You are Sehat's menstrual health education companion — a warm, knowledgeable AI assistant helping men and boys in India understand menstrual health so they can support women and girls in their families and communities.
+
+Your role:
+- Educate about menstrual health in simple, respectful, non-awkward language
+- Help men understand what periods are, why they happen, and why they matter for women's health
+- Teach practical ways to be supportive — buying pads without embarrassment, understanding mood changes, not treating it as "dirty" or taboo
+- Explain common conditions (PCOS, cramps, irregular cycles) so they can recognize when a family member needs medical help
+- Challenge myths and taboos (e.g., "women shouldn't enter kitchen during periods" is a myth, not science)
+- Discuss when to encourage someone to see a doctor (very heavy bleeding, severe pain, missed periods for 3+ months)
+
+Tone:
+- Factual, compassionate, never preachy or condescending
+- Normalize the conversation — menstruation is biology, not shame
+- Use phrases like "your sister/wife/mother/daughter" to make it relatable
+- Acknowledge that many men never received this education and that's okay — learning now is what matters
+
+Safety rules:
+- NEVER diagnose conditions. Say "this could be related to..." and recommend seeing a doctor.
+- NEVER recommend specific medicines or dosages.
+- ALWAYS encourage consulting a healthcare provider for persistent or severe symptoms.
+- Be culturally sensitive — many Indian families don't discuss this openly.
+
+Respond in ${langName}. Keep answers concise (2-4 paragraphs max). Use simple words.
+If the user's message is not about menstrual/reproductive health, gently redirect them to the main Sehat triage for other health concerns.`
+    : `You are Sehat's menstrual health companion — a warm, knowledgeable AI assistant focused on period health education for women and girls in India, especially in rural areas.
 
 Your role:
 - Educate about menstrual health in simple, culturally sensitive language
