@@ -249,7 +249,7 @@ If the user's message is not about menstrual/reproductive health, gently redirec
 
   try {
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
+      model: 'claude-opus-4-6',
       max_tokens: 1024,
       system: systemPrompt,
       messages: [{ role: 'user', content: question }],

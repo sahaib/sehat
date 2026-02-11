@@ -194,6 +194,16 @@ export default function Home() {
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputModeRef = useRef<'text' | 'voice' | 'voice_conversation'>('text');
+  // Track follow-up count in a ref to avoid stale closure in streaming callback
+  const followUpCountRef = useRef(state.followUpCount);
+  followUpCountRef.current = state.followUpCount;
+
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
 
   // Auto-scroll when content changes
   useEffect(() => {
@@ -222,6 +232,11 @@ export default function Home() {
       abortRef.current = controller;
 
       try {
+        // Offline detection — fail fast instead of hanging
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          throw new Error('You appear to be offline. Please check your internet connection and try again.');
+        }
+
         const response = await fetch('/api/triage', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -284,7 +299,7 @@ export default function Home() {
                   if (
                     event.data.needs_follow_up &&
                     event.data.follow_up_question &&
-                    state.followUpCount < MAX_FOLLOW_UPS
+                    followUpCountRef.current < MAX_FOLLOW_UPS
                   ) {
                     dispatch({
                       type: 'STREAM_FOLLOW_UP',
@@ -347,7 +362,7 @@ export default function Home() {
         }
       }
     },
-    [state.language, state.messages, state.sessionId, state.followUpCount]
+    [state.language, state.messages, state.sessionId]
   );
 
   const handleTextSubmit = useCallback((text: string) => {

@@ -33,11 +33,16 @@ export default function ThinkingDisplay({
   const contentRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(0);
+  // Track whether user explicitly collapsed — respect their preference
+  const userCollapsedRef = useRef(false);
 
-  // Auto-expand when thinking starts, track elapsed time
+  // Auto-expand when thinking starts (unless user explicitly collapsed), track elapsed time
   useEffect(() => {
     if (isThinking) {
-      setIsExpanded(true);
+      // Only auto-expand if user hasn't manually collapsed this session
+      if (!userCollapsedRef.current) {
+        setIsExpanded(true);
+      }
       startTimeRef.current = Date.now();
       timerRef.current = setInterval(() => {
         setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000));
@@ -65,7 +70,13 @@ export default function ThinkingDisplay({
   return (
     <div className="w-full animate-fade-in thinking-border" aria-live="polite">
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={() => {
+          const next = !isExpanded;
+          setIsExpanded(next);
+          // Track user intent — if they collapse, don't auto-expand again
+          if (!next) userCollapsedRef.current = true;
+          else userCollapsedRef.current = false;
+        }}
         className="flex items-center gap-2 text-sm font-medium text-purple-600
                    hover:text-purple-700 transition-colors mb-2 w-full group"
         aria-expanded={isExpanded}

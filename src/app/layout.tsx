@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Noto_Sans } from 'next/font/google';
 import { ClerkProvider } from '@clerk/nextjs';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import './globals.css';
 
 const notoSans = Noto_Sans({
@@ -47,7 +48,7 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://api.sarvam.ai" />
       </head>
       <body className="min-h-screen bg-gradient-to-br from-teal-50/80 via-white to-indigo-50/30 font-sans">
-        {children}
+        <ErrorBoundary>{children}</ErrorBoundary>
       </body>
     </html>
   );

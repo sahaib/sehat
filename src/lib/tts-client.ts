@@ -22,7 +22,7 @@ function cacheSet(key: string, blob: Blob): void {
     const oldest = audioCache.keys().next().value;
     if (oldest !== undefined) audioCache.delete(oldest);
   }
-  cacheSet(key, blob);
+  audioCache.set(key, blob);
 }
 
 // ─── Helpers ────────────────────────────────────

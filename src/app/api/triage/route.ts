@@ -24,8 +24,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: TriageRequest = await request.json();
-    const { message, language, conversationHistory, sessionId, inputMode } = body;
+    const { message, language, conversationHistory, sessionId: rawSessionId, inputMode } = body;
     const clerkUserId = await getClerkUserId();
+
+    // Guarantee a unique session ID — never fall back to 'unknown' (causes UNIQUE collisions)
+    const sessionId = rawSessionId || crypto.randomUUID();
 
     if (!message?.trim() || !language) {
       return Response.json(
@@ -75,7 +78,7 @@ export async function POST(request: NextRequest) {
 
           // Save user message to DB (fire-and-forget)
           saveConversationMessage({
-            session_id: sessionId || 'unknown',
+            session_id: sessionId,
             clerk_user_id: clerkUserId,
             role: 'user',
             content: message,
@@ -113,7 +116,7 @@ export async function POST(request: NextRequest) {
                 : event.data.follow_up_question;
               if (question) {
                 saveConversationMessage({
-                  session_id: sessionId || 'unknown',
+                  session_id: sessionId,
                   clerk_user_id: clerkUserId,
                   role: 'assistant',
                   content: question,
@@ -131,7 +134,7 @@ export async function POST(request: NextRequest) {
           // Persist to Supabase (fire-and-forget)
           if (tel.severity || tel.isEmergency) {
             saveTriageSession({
-              session_id: sessionId || 'unknown',
+              session_id: sessionId,
               clerk_user_id: clerkUserId,
               language,
               severity: tel.severity || 'emergency',
@@ -148,7 +151,7 @@ export async function POST(request: NextRequest) {
             // Save full result JSON for history replay
             if (resultData) {
               saveTriageResult({
-                session_id: sessionId || 'unknown',
+                session_id: sessionId,
                 clerk_user_id: clerkUserId,
                 result_json: resultData,
                 thinking_content: thinkingAccumulator || null,
@@ -169,7 +172,7 @@ export async function POST(request: NextRequest) {
 
           // Persist error sessions too so they show in history
           saveTriageSession({
-            session_id: sessionId || 'unknown',
+            session_id: sessionId,
             clerk_user_id: clerkUserId,
             language,
             severity: tel.severity || 'routine',

@@ -133,6 +133,7 @@ const T: Record<string, Record<Language, string>> = {
 
   // ─── Footer ───
   footerAlly:    { hi: 'ज्ञान शक्ति है। मासिक स्वास्थ्य पर चुप्पी तोड़ें।', ta: 'அறிவே சக்தி. மாதவிடாய் சுகாதாரத்தில் மௌனத்தை உடையுங்கள்.', te: 'జ్ఞానమే శక్తి. ఋతు ఆరోగ్యంపై మౌనాన్ని బద్దలు కొట్టండి.', mr: 'ज्ञान हीच शक्ती. मासिक आरोग्यावरील शांतता मोडा.', kn: 'ಜ್ಞಾನವೇ ಶಕ್ತಿ. ಮುಟ್ಟಿನ ಆರೋಗ್ಯದ ಬಗ್ಗೆ ಮೌನ ಮುರಿಯಿರಿ.', bn: 'জ্ঞানই শক্তি। মাসিক স্বাস্থ্যে নীরবতা ভাঙুন।', en: 'Knowledge is power. Break the silence around menstrual health.' },
+  deleteConfirm: { hi: 'क्या आप इस चक्र को हटाना चाहती हैं?', ta: 'இந்த சுழற்சியை நீக்க விரும்புகிறீர்களா?', te: 'ఈ చక్రాన్ని తొలగించాలనుకుంటున్నారా?', mr: 'तुम्हाला हे चक्र हटवायचे आहे का?', kn: 'ಈ ಚಕ್ರವನ್ನು ಅಳಿಸಲು ಬಯಸುವಿರಾ?', bn: 'আপনি কি এই চক্রটি মুছে ফেলতে চান?', en: 'Delete this cycle entry?' },
   footerTracker: { hi: 'आपका पीरियड डेटा निजी है और केवल आपको दिखाई देता है। यह चिकित्सा निदान नहीं है।', ta: 'உங்கள் மாதவிடாய் தகவல் தனிப்பட்டது. இது மருத்துவ நோயறிதல் அல்ல.', te: 'మీ పీరియడ్ డేటా ప్రైవేట్. ఇది వైద్య నిర్ధారణ కాదు.', mr: 'तुमचा पाळी डेटा खाजगी आहे. हे वैद्यकीय निदान नाही.', kn: 'ನಿಮ್ಮ ಮುಟ್ಟಿನ ಡೇಟಾ ಖಾಸಗಿ. ಇದು ವೈದ್ಯಕೀಯ ರೋಗನಿರ್ಣಯ ಅಲ್ಲ.', bn: 'আপনার পিরিয়ড ডেটা ব্যক্তিগত। এটি চিকিৎসা নির্ণয় নয়।', en: 'Your period data is private and visible only to you. Not a medical diagnosis.' },
 };
 
@@ -241,6 +242,17 @@ export default function PeriodHealthPage() {
       if (res.ok) { const data = await res.json(); setAiAnswer(data.answer); }
     } catch { /* silent */ }
     finally { setAiLoading(false); }
+  };
+
+  const handleDeleteCycle = async (id: string) => {
+    if (!window.confirm(t('deleteConfirm', language))) return;
+    try {
+      await fetch('/api/period-tracker', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', id }),
+      });
+      await fetchData();
+    } catch { /* silent */ }
   };
 
   const toggleSymptom = (s: string) => {
@@ -463,6 +475,9 @@ export default function PeriodHealthPage() {
                             {c.cycle_length && <span>{c.cycle_length} {t('dayCycle', language)}</span>}
                           </div>
                         </div>
+                        <button onClick={() => handleDeleteCycle(c.id)} className="text-gray-300 hover:text-red-400 transition-colors p-1 flex-shrink-0" aria-label="Delete cycle">
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                        </button>
                       </div>
                     );
                   })}
