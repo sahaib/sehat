@@ -127,7 +127,13 @@ export default function VoiceConversationMode({
       },
       onError: () => {
         ttsControllerRef.current = null;
-        if (mountedRef.current) setPhase('idle');
+        if (mountedRef.current) {
+          setPhase('idle');
+          // Auto-listen on TTS error too so voice loop doesn't break
+          setTimeout(() => {
+            if (mountedRef.current) startListening();
+          }, 400);
+        }
       },
     });
 
@@ -143,6 +149,8 @@ export default function VoiceConversationMode({
     return () => {
       mountedRef.current = false;
       clearTimeout(t);
+      // Stop recording to release mic (privacy + battery)
+      stopRecording();
       if (ttsControllerRef.current) {
         ttsControllerRef.current.stop();
         ttsControllerRef.current = null;

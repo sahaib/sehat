@@ -80,7 +80,7 @@ export default function TextInput({
         <button
           onClick={handleSubmit}
           disabled={disabled || !hasText}
-          className={`w-9 h-9 rounded-full flex items-center justify-center
+          className={`w-11 h-11 rounded-full flex items-center justify-center
                      transition-all duration-300 active:scale-90
                      ${hasText
                        ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white hover:from-teal-600 hover:to-teal-700 shadow-md shadow-teal-300/30 hover:shadow-lg'

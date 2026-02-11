@@ -49,7 +49,8 @@ function avg(nums: number[]): number {
 function p95(nums: number[]): number {
   if (nums.length === 0) return 0;
   const sorted = [...nums].sort((a, b) => a - b);
-  return sorted[Math.floor(sorted.length * 0.95)];
+  const idx = Math.min(Math.floor(sorted.length * 0.95), sorted.length - 1);
+  return sorted[idx];
 }
 
 class TelemetryStore {

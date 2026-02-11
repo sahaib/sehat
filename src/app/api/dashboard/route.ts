@@ -50,7 +50,7 @@ export async function GET() {
       severityDist[s.severity]++;
     }
     if (s.is_emergency) emergencyCount++;
-    if (s.confidence != null) {
+    if (typeof s.confidence === 'number' && !isNaN(s.confidence)) {
       confidenceSum += s.confidence;
       confidenceCount++;
     }
@@ -93,6 +93,29 @@ export async function GET() {
     timeline.push({ date, ...counts });
   }
 
+  // Trend analysis: compare last 7 days vs previous 7 days
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+  const recentWeek = allSessions.filter(s => new Date(s.created_at) >= sevenDaysAgo);
+  const prevWeek = allSessions.filter(s => {
+    const d = new Date(s.created_at);
+    return d >= fourteenDaysAgo && d < sevenDaysAgo;
+  });
+
+  const trendDirection = (recent: number, prev: number): 'up' | 'down' | 'stable' => {
+    if (prev === 0 && recent === 0) return 'stable';
+    if (prev === 0) return 'up';
+    const change = ((recent - prev) / prev) * 100;
+    if (change > 15) return 'up';
+    if (change < -15) return 'down';
+    return 'stable';
+  };
+
+  const recentEmergencies = recentWeek.filter(s => s.is_emergency).length;
+  const prevEmergencies = prevWeek.filter(s => s.is_emergency).length;
+
   return Response.json({
     total,
     emergencyCount,
@@ -100,5 +123,11 @@ export async function GET() {
     severityDistribution: severityDist,
     topSymptoms,
     timeline,
+    trends: {
+      sessions: trendDirection(recentWeek.length, prevWeek.length),
+      emergencies: trendDirection(recentEmergencies, prevEmergencies),
+      sessionsThisWeek: recentWeek.length,
+      sessionsPrevWeek: prevWeek.length,
+    },
   });
 }

@@ -122,9 +122,32 @@ export default function SessionDetailPage() {
       </header>
 
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
+        {/* Session metadata bar */}
+        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400">
+          {session.is_emergency && (
+            <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-bold">EMERGENCY</span>
+          )}
+          {session.input_mode && (
+            <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 capitalize">
+              {session.input_mode === 'voice_conversation' ? 'Voice' : session.input_mode}
+            </span>
+          )}
+          {session.symptoms && session.symptoms.length > 0 && (
+            <span className="text-gray-400">
+              {session.symptoms.join(', ')}
+            </span>
+          )}
+        </div>
+
         {/* Conversation */}
-        {threadMessages.length > 0 && (
+        {threadMessages.length > 0 ? (
           <ConversationThread messages={threadMessages} language={language} />
+        ) : result && (
+          <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-400 italic">
+            {session.is_emergency
+              ? 'Emergency detected — immediate triage bypassed conversation.'
+              : 'No conversation messages recorded for this session.'}
+          </div>
         )}
 
         {/* Thinking toggle */}
@@ -169,10 +192,13 @@ export default function SessionDetailPage() {
           </>
         )}
 
-        {/* No result fallback */}
+        {/* No data fallback */}
         {!result && threadMessages.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-400">No detailed data available for this session</p>
+          <div className="text-center py-12 space-y-2">
+            <p className="text-gray-400">No detailed data available for this session.</p>
+            {session.reasoning_summary && (
+              <p className="text-sm text-gray-500 max-w-md mx-auto">{session.reasoning_summary}</p>
+            )}
           </div>
         )}
       </div>

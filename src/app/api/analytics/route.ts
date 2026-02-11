@@ -65,6 +65,13 @@ export async function GET() {
       const completed = triageEvents.filter(e => !e.had_error && e.severity);
       const voiceCount = triageEvents.filter(e => e.input_mode !== 'text').length;
 
+      // Query triage_sessions for follow-up and non-medical rates (last 24h)
+      const { data: recentSessions } = await supabase
+        .from('triage_sessions')
+        .select('follow_up_count, is_medical_query')
+        .gte('created_at', last24h);
+      const sessionsArr = recentSessions || [];
+
       // Unique languages
       const langsUsed = new Set(triageEvents.map(e => e.language).filter(Boolean));
 
@@ -72,7 +79,8 @@ export async function GET() {
       const p95 = (nums: number[]) => {
         if (nums.length === 0) return 0;
         const sorted = [...nums].sort((a, b) => a - b);
-        return sorted[Math.floor(sorted.length * 0.95)];
+        const idx = Math.min(Math.floor(sorted.length * 0.95), sorted.length - 1);
+        return sorted[idx];
       };
 
       const metrics = {
@@ -117,9 +125,11 @@ export async function GET() {
         },
 
         quality: {
-          avgConfidence: avg(completed.filter(e => e.confidence != null).map(e => Math.round(e.confidence * 100))),
-          followUpRate: 0, // Not tracked in telemetry_events
-          nonMedicalRate: 0,
+          avgConfidence: avg(completed.filter(e => typeof e.confidence === 'number' && !isNaN(e.confidence)).map(e => Math.round(e.confidence * 100))),
+          followUpRate: sessionsArr.length > 0
+            ? Math.round((sessionsArr.filter(s => s.follow_up_count > 0).length / sessionsArr.length) * 100) : 0,
+          nonMedicalRate: sessionsArr.length > 0
+            ? Math.round((sessionsArr.filter(s => !s.is_medical_query).length / sessionsArr.length) * 100) : 0,
         },
 
         voicePipeline: {
