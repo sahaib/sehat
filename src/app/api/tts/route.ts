@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
         'API-Subscription-Key': apiKey,
       },
       body: JSON.stringify({
-        inputs: trimmedText,
+        text: trimmedText,
         target_language_code: language_code || 'en-IN',
         speaker: 'meera',
         model: 'bulbul:v2',

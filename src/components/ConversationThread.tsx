@@ -1,5 +1,6 @@
 'use client';
 
+import ReactMarkdown from 'react-markdown';
 import { Message, Language } from '@/types';
 import { SUPPORTED_LANGUAGES } from '@/lib/constants';
 import ReadAloudButton from './ReadAloudButton';
@@ -42,9 +43,12 @@ export default function ConversationThread({
                   <span className="text-xs font-semibold text-teal-700 uppercase tracking-wide">Follow-up question</span>
                 </div>
               )}
-              <p className="whitespace-pre-wrap text-base leading-relaxed">
-                {msg.content}
-              </p>
+              <div className="prose prose-sm max-w-none text-base leading-relaxed
+                            prose-p:my-1.5 prose-ul:my-1.5 prose-ol:my-1.5 prose-li:my-0.5
+                            prose-strong:text-gray-900 prose-headings:text-gray-900
+                            prose-h3:text-base prose-h3:font-semibold prose-h3:mt-3 prose-h3:mb-1">
+                <ReactMarkdown>{msg.content}</ReactMarkdown>
+              </div>
               <div className="mt-2 pt-2 border-t border-gray-100">
                 <ReadAloudButton text={msg.content} languageCode={speechCode} size="sm" />
               </div>
