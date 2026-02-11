@@ -4,6 +4,7 @@ import { streamTriage } from '@/lib/triage-agent';
 import { TriageRequest, StreamEvent } from '@/types';
 import { telemetry, InputMode, TriageEvent } from '@/lib/telemetry';
 import { saveTriageSession, saveConversationMessage, saveTriageResult } from '@/lib/db';
+import { validateLanguage, sanitizeMessage, sanitizeConversationHistory } from '@/lib/input-guard';
 
 async function getClerkUserId(): Promise<string | null> {
   try {
@@ -24,13 +25,18 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: TriageRequest = await request.json();
-    const { message, language, conversationHistory, sessionId: rawSessionId, inputMode } = body;
+    const { message, conversationHistory, sessionId: rawSessionId, inputMode } = body;
     const clerkUserId = await getClerkUserId();
+
+    // Validate and sanitize inputs
+    const language = validateLanguage(body.language);
+    const { text: sanitizedMessage } = sanitizeMessage(message || '');
+    const sanitizedHistory = sanitizeConversationHistory(conversationHistory);
 
     // Guarantee a unique session ID — never fall back to 'unknown' (causes UNIQUE collisions)
     const sessionId = rawSessionId || crypto.randomUUID();
 
-    if (!message?.trim() || !language) {
+    if (!sanitizedMessage) {
       return Response.json(
         { error: 'Message and language are required' },
         { status: 400 }
@@ -38,7 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Server-side emergency detection (Layer 2)
-    const emergencyCheck = detectEmergency(message, language);
+    const emergencyCheck = detectEmergency(sanitizedMessage, language);
 
     const encoder = new TextEncoder();
 
@@ -51,7 +57,7 @@ export async function POST(request: NextRequest) {
       confidence: null,
       isEmergency: emergencyCheck.isEmergency,
       isMedicalQuery: true,
-      followUpCount: (conversationHistory || []).filter(m => m.isFollowUp).length,
+      followUpCount: sanitizedHistory.filter(m => m.isFollowUp).length,
       latencyMs: 0,
       hadError: false,
     };
@@ -81,16 +87,16 @@ export async function POST(request: NextRequest) {
             session_id: sessionId,
             clerk_user_id: clerkUserId,
             role: 'user',
-            content: message,
+            content: sanitizedMessage,
             language,
-            is_follow_up: (conversationHistory || []).length > 0,
+            is_follow_up: sanitizedHistory.length > 0,
           });
 
           // Stream triage response from Claude
           for await (const event of streamTriage(
-            message,
+            sanitizedMessage,
             language,
-            conversationHistory || []
+            sanitizedHistory
           )) {
             send(event);
 
