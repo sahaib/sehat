@@ -71,15 +71,15 @@ export default function VoiceInput({
 
   return (
     <>
-      {/* Mic button — same size as send, sits right next to it */}
+      {/* Mic button */}
       <button
         onClick={handleMicClick}
         disabled={disabled || isProcessingAny}
-        className={`w-9 h-9 rounded-full flex items-center justify-center
-                   transition-all duration-150 active:scale-90
+        className={`w-9 h-9 rounded-lg flex items-center justify-center
+                   transition-all duration-200 active:scale-90
                    ${isRecording
-                     ? 'bg-emergency-500 text-white animate-recording-pulse'
-                     : 'text-gray-400 hover:text-teal-600 hover:bg-teal-50'
+                     ? 'bg-red-500 text-white shadow-sm shadow-red-300/40 animate-recording-pulse'
+                     : 'text-gray-400 hover:text-teal-600 hover:bg-teal-50/80'
                    }
                    ${disabled || isProcessingAny ? 'opacity-50 cursor-not-allowed' : ''}`}
         aria-label={isRecording ? 'Stop recording' : 'Start voice recording'}
@@ -91,7 +91,7 @@ export default function VoiceInput({
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
           </svg>
         ) : isRecording ? (
-          <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <svg className="w-[16px] h-[16px]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path fillRule="evenodd" d="M4.5 7.5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-9a3 3 0 01-3-3v-9z" clipRule="evenodd" />
           </svg>
         ) : (
@@ -104,20 +104,20 @@ export default function VoiceInput({
 
       {/* Status toast — floats above the input bar */}
       {(isRecording || transcribedText || (error && !isRecording)) && (
-        <div className="absolute bottom-full left-0 right-0 mb-2">
+        <div className="absolute bottom-full left-0 right-0 mb-2 px-1">
           {isRecording && (
-            <div className="inline-flex items-center gap-2 bg-emergency-50 border border-emergency-200 rounded-xl px-4 py-2 text-sm text-emergency-700 animate-fade-in">
-              <span className="w-2 h-2 bg-emergency-500 rounded-full animate-pulse" />
+            <div className="inline-flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 text-sm text-red-700 animate-fade-in shadow-sm">
+              <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
               {listeningLabel}
             </div>
           )}
           {transcribedText && (
-            <div className="bg-teal-50 border border-teal-200 rounded-xl px-4 py-2 text-sm text-teal-800 animate-fade-in">
+            <div className="bg-teal-50 border border-teal-200 rounded-xl px-4 py-2.5 text-sm text-teal-800 animate-fade-in shadow-sm">
               &ldquo;{transcribedText}&rdquo;
             </div>
           )}
           {error && !isRecording && (
-            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-2 text-xs text-red-600 animate-fade-in">
+            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 text-xs text-red-600 animate-fade-in shadow-sm">
               {error}
             </div>
           )}

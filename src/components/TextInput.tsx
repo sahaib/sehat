@@ -8,7 +8,7 @@ interface TextInputProps {
   onSubmit: (text: string) => void;
   disabled: boolean;
   language: Language;
-  /** Render extra buttons (e.g. mic) next to the send button */
+  /** Render extra buttons (e.g. mic, voice mode) next to the send button */
   extraActions?: React.ReactNode;
 }
 
@@ -54,7 +54,7 @@ export default function TextInput({
 
   return (
     <div
-      className={`flex items-end rounded-2xl transition-all duration-300 glass-input
+      className={`flex items-end gap-2 rounded-2xl transition-all duration-300 glass-input
                   ${disabled ? 'opacity-50' : 'focus-within:border-teal-400/60 focus-within:ring-2 focus-within:ring-teal-100/50 focus-within:shadow-lg focus-within:shadow-teal-100/20'}`}
     >
       {/* Textarea — borderless, fills the space */}
@@ -67,34 +67,43 @@ export default function TextInput({
         disabled={disabled}
         rows={1}
         className="flex-1 min-w-0 resize-none bg-transparent border-0
-                   pl-4 pr-1 py-3 text-gray-800 placeholder-gray-400
+                   pl-4 pr-0 py-3 text-gray-800 placeholder-gray-400
                    focus:outline-none focus:ring-0
                    disabled:cursor-not-allowed
-                   text-base leading-relaxed"
+                   text-[15px] leading-relaxed"
         aria-label="Describe your symptoms"
       />
 
-      {/* Action buttons — bottom-right, inside the same container */}
-      <div className="flex items-center gap-1 pr-2 pb-2 flex-shrink-0">
-        {/* Send button */}
+      {/* Action buttons — bottom-right, vertically centered with last line */}
+      <div className="flex items-center gap-1.5 pr-2.5 pb-2 pt-1 flex-shrink-0">
+        {/* Secondary actions: mic + voice mode */}
+        {extraActions && (
+          <div className="flex items-center gap-0.5">
+            {extraActions}
+          </div>
+        )}
+
+        {/* Subtle separator */}
+        {extraActions && (
+          <div className="w-px h-6 bg-gray-200/70 mx-0.5" />
+        )}
+
+        {/* Send button — primary CTA */}
         <button
           onClick={handleSubmit}
           disabled={disabled || !hasText}
-          className={`w-11 h-11 rounded-full flex items-center justify-center
-                     transition-all duration-300 active:scale-90
+          className={`w-10 h-10 rounded-xl flex items-center justify-center
+                     transition-all duration-200 active:scale-90 flex-shrink-0
                      ${hasText
-                       ? 'bg-gradient-to-r from-teal-500 to-teal-600 text-white hover:from-teal-600 hover:to-teal-700 shadow-md shadow-teal-300/30 hover:shadow-lg'
-                       : 'text-gray-300 cursor-default'
+                       ? 'bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-md shadow-teal-500/25 hover:shadow-lg hover:shadow-teal-500/30 hover:from-teal-600 hover:to-teal-700'
+                       : 'bg-gray-100 text-gray-300 cursor-default'
                      }`}
           aria-label="Send message"
         >
-          <svg viewBox="0 0 24 24" fill="currentColor" className="w-[18px] h-[18px]">
+          <svg viewBox="0 0 24 24" fill="currentColor" className="w-[17px] h-[17px]">
             <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
           </svg>
         </button>
-
-        {/* Extra actions (mic button etc.) injected from parent */}
-        {extraActions}
       </div>
     </div>
   );

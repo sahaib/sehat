@@ -726,9 +726,9 @@ export default function Home() {
                   <button
                     onClick={() => setIsVoiceMode(true)}
                     disabled={isInputDisabled}
-                    className="w-9 h-9 rounded-full flex items-center justify-center
-                               text-gray-400 hover:text-teal-600 hover:bg-teal-50
-                               transition-all duration-150 active:scale-90
+                    className="w-9 h-9 rounded-lg flex items-center justify-center
+                               text-gray-400 hover:text-teal-600 hover:bg-teal-50/80
+                               transition-all duration-200 active:scale-90
                                disabled:opacity-50 disabled:cursor-not-allowed"
                     aria-label="Start voice conversation"
                     title="Voice conversation mode"
