@@ -26,6 +26,8 @@ import ProfileForm from '@/components/ProfileForm';
 import FileUpload from '@/components/FileUpload';
 import DisclaimerFooter from '@/components/DisclaimerFooter';
 import ReadAloudButton from '@/components/ReadAloudButton';
+import { prewarmTTS } from '@/lib/tts-client';
+import Link from 'next/link';
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
@@ -177,11 +179,15 @@ export default function Home() {
     sessionId: '',
   });
   const [showProfileForm, setShowProfileForm] = useState(false);
+  const [userName, setUserName] = useState('');
 
   useEffect(() => {
     if (!mounted) {
       setMounted(true);
       dispatch({ type: 'RESET' });
+      // Load user name from localStorage for personalized greeting
+      const savedName = localStorage.getItem('sehat_user_name');
+      if (savedName) setUserName(savedName);
     }
   }, [mounted]);
 
@@ -274,7 +280,7 @@ export default function Home() {
                 case 'thinking_done':
                   dispatch({ type: 'STREAM_THINKING_DONE' });
                   break;
-                case 'result':
+                case 'result': {
                   if (
                     event.data.needs_follow_up &&
                     event.data.follow_up_question &&
@@ -286,7 +292,27 @@ export default function Home() {
                     });
                   }
                   dispatch({ type: 'STREAM_RESULT', data: event.data });
+
+                  // Fire TTS pre-warm IMMEDIATELY — don't wait for stream to close.
+                  // This overlaps TTS synthesis with the remaining SSE events.
+                  const langCfg = SUPPORTED_LANGUAGES.find((l) => l.code === state.language);
+                  const spCode = langCfg?.speechCode || 'en-IN';
+                  if (event.data.is_medical_query === false) {
+                    if (event.data.redirect_message) {
+                      prewarmTTS(event.data.redirect_message, spCode);
+                    }
+                  } else {
+                    const apText = [
+                      event.data.action_plan?.go_to,
+                      ...(event.data.action_plan?.first_aid || []),
+                    ].filter(Boolean).join('. ');
+                    if (apText) prewarmTTS(apText, spCode);
+                    if (event.data.reasoning_summary) prewarmTTS(event.data.reasoning_summary, spCode);
+                    // For follow-up questions
+                    if (event.data.follow_up_question) prewarmTTS(event.data.follow_up_question, spCode);
+                  }
                   break;
+                }
                 case 'follow_up':
                   break;
                 case 'emergency':
@@ -348,6 +374,10 @@ export default function Home() {
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const voiceTextRef = useRef<string | null>(null);
 
+  // TTS pre-warm is fired inline during SSE stream processing (in handleSubmit)
+  // when the 'result' event arrives — this overlaps TTS synthesis with the
+  // remaining stream. No separate useEffect needed for the main prewarm.
+
   const hasConversation = state.messages.length > 0;
   const showResult =
     state.currentResult &&
@@ -356,8 +386,10 @@ export default function Home() {
   const isInputDisabled = state.isStreaming || state.isThinking;
 
   // Derive text to auto-speak in voice mode
+  // Note: we check currentResult directly (not isStreaming) so voice can start
+  // as soon as the result event arrives — TTS is already pre-warmed by then
   const voiceTextToSpeak = useMemo(() => {
-    if (!isVoiceMode || state.isStreaming || state.isThinking) return null;
+    if (!isVoiceMode || state.isThinking) return null;
 
     // Follow-up question from assistant
     const lastMsg = state.messages[state.messages.length - 1];
@@ -365,8 +397,8 @@ export default function Home() {
       return lastMsg.content;
     }
 
-    // Final result
-    if (showResult && state.currentResult) {
+    // Final result — available as soon as STREAM_RESULT dispatches
+    if (state.currentResult && (!state.currentResult.needs_follow_up || state.followUpCount >= MAX_FOLLOW_UPS)) {
       if (state.currentResult.is_medical_query === false) {
         return state.currentResult.redirect_message || null;
       }
@@ -374,7 +406,16 @@ export default function Home() {
     }
 
     return null;
-  }, [isVoiceMode, state.isStreaming, state.isThinking, state.messages, showResult, state.currentResult]);
+  }, [isVoiceMode, state.isThinking, state.messages, state.currentResult, state.followUpCount]);
+
+  // Pre-warm TTS for follow-up questions (voice mode will need them)
+  useEffect(() => {
+    if (voiceTextToSpeak && isVoiceMode) {
+      const langConfig = SUPPORTED_LANGUAGES.find((l) => l.code === state.language);
+      const speechCode = langConfig?.speechCode || 'en-IN';
+      prewarmTTS(voiceTextToSpeak, speechCode);
+    }
+  }, [voiceTextToSpeak, isVoiceMode, state.language]);
 
   // Reset voice text tracking when entering voice mode
   useEffect(() => {
@@ -384,17 +425,31 @@ export default function Home() {
   }, [isVoiceMode]);
 
   return (
-    <main className="flex flex-col h-[100dvh] max-w-2xl mx-auto relative">
+    <main className="flex flex-col h-[100dvh] max-w-2xl mx-auto relative overflow-hidden">
+      {/* Floating gradient blobs */}
+      <div className="gradient-blob gradient-blob-1" aria-hidden="true" />
+      <div className="gradient-blob gradient-blob-2" aria-hidden="true" />
+      <div className="gradient-blob gradient-blob-3" aria-hidden="true" />
+
+      {/* Ambient glow when AI is thinking (non-voice mode) */}
+      {!isVoiceMode && (state.isThinking || (state.isStreaming && state.thinkingContent)) && (
+        <div className="ambient-glow ambient-glow--thinking animate-fade-in" aria-hidden="true">
+          <div className="ambient-glow-orb" />
+          <div className="ambient-glow-orb" />
+          <div className="ambient-glow-orb" />
+        </div>
+      )}
+
       {/* Emergency Banner Overlay */}
       {state.isEmergency && state.emergencyData && (
         <EmergencyBanner detection={state.emergencyData} />
       )}
 
-      {/* Header */}
-      <header className="flex-shrink-0 px-4 pt-4 pb-2 no-print">
+      {/* Header — glass morphism */}
+      <header className="flex-shrink-0 px-4 pt-4 pb-2 no-print glass-header z-10 relative">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-full bg-teal-600 flex items-center justify-center shadow-sm">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center shadow-lg shadow-teal-300/30 transition-transform duration-300 hover:scale-110">
               <svg
                 className="w-6 h-6 text-white"
                 viewBox="0 0 24 24"
@@ -405,17 +460,47 @@ export default function Home() {
               </svg>
             </div>
             <div>
-              <h1 className="text-xl font-bold text-teal-800">Sehat</h1>
+              <h1 className="text-xl font-bold bg-gradient-to-r from-teal-700 to-teal-500 bg-clip-text text-transparent">Sehat</h1>
               <p className="text-xs text-gray-400">AI Medical Triage</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* History link */}
+            <Link
+              href="/history"
+              className="w-9 h-9 rounded-full flex items-center justify-center
+                         text-gray-400 hover:text-teal-600 hover:bg-teal-50/80
+                         transition-all duration-200 active:scale-90
+                         border border-transparent hover:border-teal-200"
+              aria-label="View chat history"
+              title="Chat History"
+            >
+              <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </Link>
+            {/* Profile button — only when Clerk is NOT enabled (ClerkAuthButtons has its own) */}
+            {!CLERK_ENABLED && (
+              <button
+                onClick={() => setShowProfileForm(true)}
+                className="w-9 h-9 rounded-full flex items-center justify-center
+                           text-gray-400 hover:text-teal-600 hover:bg-teal-50/80
+                           transition-all duration-200 active:scale-90
+                           border border-transparent hover:border-teal-200"
+                aria-label="Edit health profile"
+                title="Health Profile"
+              >
+                <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                </svg>
+              </button>
+            )}
             {hasConversation && (
               <button
                 onClick={handleReset}
                 className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-teal-700
-                           px-3 py-1.5 rounded-lg hover:bg-teal-50 border border-transparent
-                           hover:border-teal-200 transition-all duration-200"
+                           px-3 py-1.5 rounded-lg hover:bg-teal-50/80 border border-transparent
+                           hover:border-teal-200 transition-all duration-200 active:scale-95"
                 aria-label="Start new conversation"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -430,8 +515,9 @@ export default function Home() {
               ) : (
                 <a
                   href="/sign-in"
-                  className="text-xs text-teal-600 hover:text-teal-700 hover:bg-teal-50
-                             px-3 py-1.5 rounded-lg border border-teal-200 transition-colors font-medium"
+                  className="text-xs text-teal-600 hover:text-teal-700 hover:bg-teal-50/80
+                             px-3 py-1.5 rounded-lg border border-teal-200/60 transition-all duration-200 font-medium
+                             backdrop-blur-sm"
                 >
                   Sign in
                 </a>
@@ -452,12 +538,12 @@ export default function Home() {
       {/* Conversation Area */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-hide"
+        className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-hide relative z-0"
       >
         {/* Welcome state */}
         {!hasConversation && (
-          <div className="flex flex-col items-center justify-center h-full text-center space-y-4 py-12">
-            <div className="w-20 h-20 rounded-full bg-teal-100 flex items-center justify-center">
+          <div className="flex flex-col items-center justify-center h-full text-center space-y-4 py-12 animate-fade-in">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-teal-100 to-teal-200/60 flex items-center justify-center animate-float welcome-pulse">
               <svg
                 className="w-10 h-10 text-teal-600"
                 viewBox="0 0 24 24"
@@ -468,7 +554,9 @@ export default function Home() {
               </svg>
             </div>
             <h2 className="text-2xl font-bold text-gray-700">
-              {WELCOME_GREETINGS[state.language]}
+              {userName
+                ? `${WELCOME_GREETINGS[state.language].split('!')[0]}, ${userName}!`
+                : WELCOME_GREETINGS[state.language]}
             </h2>
             <p className="text-gray-400 max-w-sm text-base">
               {WELCOME_SUBTITLES[state.language]}
@@ -491,10 +579,10 @@ export default function Home() {
         {state.isStreaming &&
           !state.isThinking &&
           !state.thinkingContent && (
-            <div className="flex items-center gap-2 text-teal-600 animate-fade-in">
-              <div className="shimmer-bg rounded-2xl p-4 w-3/4">
-                <div className="h-4 bg-teal-100/50 rounded mb-2 w-full" />
-                <div className="h-4 bg-teal-100/50 rounded w-2/3" />
+            <div className="flex items-center gap-2 text-teal-600 animate-fade-in-up">
+              <div className="shimmer-bg rounded-2xl p-4 w-3/4 backdrop-blur-sm">
+                <div className="h-4 bg-teal-100/40 rounded-full mb-2 w-full" />
+                <div className="h-4 bg-teal-100/40 rounded-full w-2/3" />
               </div>
             </div>
           )}
@@ -545,7 +633,7 @@ export default function Home() {
         {/* Error display */}
         {state.error && (
           <div
-            className="bg-red-50 border border-red-200 rounded-2xl p-5 animate-fade-in"
+            className="bg-red-50/80 backdrop-blur-sm border border-red-200/60 rounded-2xl p-5 animate-fade-in-up"
             role="alert"
           >
             <div className="flex items-start gap-3">
@@ -570,8 +658,9 @@ export default function Home() {
         )}
       </div>
 
-      {/* Input Area (fixed at bottom) */}
-      <div className="flex-shrink-0 px-4 pb-4 pt-2 bg-gradient-to-t from-white via-white to-transparent no-print safe-bottom">
+      {/* Input Area (fixed at bottom) — glass */}
+      <div className="flex-shrink-0 px-4 pb-4 pt-3 no-print safe-bottom z-10 relative"
+           style={{ background: 'linear-gradient(to top, rgba(255,255,255,0.95) 60%, rgba(255,255,255,0))' }}>
         {isVoiceMode ? (
           <VoiceConversationMode
             language={state.language}
@@ -619,7 +708,12 @@ export default function Home() {
       {showProfileForm && (
         <ProfileForm
           language={state.language}
-          onClose={() => setShowProfileForm(false)}
+          onClose={() => {
+            setShowProfileForm(false);
+            // Refresh name after profile save
+            const savedName = localStorage.getItem('sehat_user_name');
+            setUserName(savedName || '');
+          }}
         />
       )}
     </main>

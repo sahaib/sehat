@@ -1,6 +1,14 @@
 import type { Metadata, Viewport } from 'next';
+import { Noto_Sans } from 'next/font/google';
 import { ClerkProvider } from '@clerk/nextjs';
 import './globals.css';
+
+const notoSans = Noto_Sans({
+  subsets: ['latin', 'devanagari'],
+  weight: ['300', '400', '500', '600', '700'],
+  display: 'swap',
+  variable: '--font-noto-sans',
+});
 
 export const metadata: Metadata = {
   title: 'Sehat - AI Medical Triage Assistant',
@@ -31,8 +39,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const content = (
-    <html lang="en">
-      <body className="min-h-screen bg-gradient-to-b from-teal-50 via-white to-teal-50/30 font-sans">
+    <html lang="en" className={notoSans.variable}>
+      <head>
+        {/* Preconnect to API origins for faster first requests */}
+        <link rel="dns-prefetch" href="https://api.anthropic.com" />
+        <link rel="dns-prefetch" href="https://api.openai.com" />
+        <link rel="dns-prefetch" href="https://api.sarvam.ai" />
+      </head>
+      <body className="min-h-screen bg-gradient-to-br from-teal-50/80 via-white to-indigo-50/30 font-sans">
         {children}
       </body>
     </html>

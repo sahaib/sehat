@@ -9,6 +9,7 @@
  */
 
 import { Severity, Language } from '@/types';
+import { saveTelemetryEvent } from '@/lib/db';
 
 export type InputMode = 'text' | 'voice' | 'voice_conversation';
 
@@ -63,6 +64,17 @@ class TelemetryStore {
     if (this.triageEvents.length > this.maxEvents) {
       this.triageEvents = this.triageEvents.slice(-this.maxEvents);
     }
+    // Dual-write to Supabase for persistence
+    saveTelemetryEvent({
+      event_type: 'triage',
+      language: event.language,
+      input_mode: event.inputMode,
+      severity: event.severity,
+      confidence: event.confidence,
+      is_emergency: event.isEmergency,
+      latency_ms: event.latencyMs,
+      had_error: event.hadError,
+    });
   }
 
   recordTranscribe(event: TranscribeEvent) {
@@ -70,6 +82,12 @@ class TelemetryStore {
     if (this.transcribeEvents.length > this.maxEvents) {
       this.transcribeEvents = this.transcribeEvents.slice(-this.maxEvents);
     }
+    saveTelemetryEvent({
+      event_type: 'transcribe',
+      language: event.language,
+      latency_ms: event.latencyMs,
+      success: event.success,
+    });
   }
 
   recordTTS(event: TTSEvent) {
@@ -77,6 +95,13 @@ class TelemetryStore {
     if (this.ttsEvents.length > this.maxEvents) {
       this.ttsEvents = this.ttsEvents.slice(-this.maxEvents);
     }
+    saveTelemetryEvent({
+      event_type: 'tts',
+      language: event.language,
+      text_length: event.textLength,
+      latency_ms: event.latencyMs,
+      success: event.success,
+    });
   }
 
   getMetrics() {

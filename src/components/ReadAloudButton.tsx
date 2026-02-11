@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
+import { streamTTS, TTSPlaybackController } from '@/lib/tts-client';
 
 interface ReadAloudButtonProps {
   text: string;
@@ -10,12 +11,13 @@ interface ReadAloudButtonProps {
 
 export default function ReadAloudButton({ text, languageCode, size = 'sm' }: ReadAloudButtonProps) {
   const [ttsState, setTtsState] = useState<'idle' | 'loading' | 'playing' | 'error'>('idle');
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const controllerRef = useRef<TTSPlaybackController | null>(null);
 
-  const handleClick = useCallback(async () => {
-    if (ttsState === 'playing' && audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+  const handleClick = useCallback(() => {
+    // If playing, stop
+    if (ttsState === 'playing') {
+      controllerRef.current?.stop();
+      controllerRef.current = null;
       setTtsState('idle');
       return;
     }
@@ -29,56 +31,24 @@ export default function ReadAloudButton({ text, languageCode, size = 'sm' }: Rea
     if (!text?.trim()) return;
 
     setTtsState('loading');
-    try {
-      const response = await fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text,
-          language_code: languageCode,
-        }),
-      });
 
-      if (!response.ok) {
-        console.error('TTS response error:', response.status);
-        setTtsState('error');
-        return;
-      }
-
-      const contentType = response.headers.get('content-type') || '';
-      if (!contentType.includes('audio')) {
-        console.error('TTS returned non-audio content-type:', contentType);
-        setTtsState('error');
-        return;
-      }
-
-      const audioBlob = await response.blob();
-      if (audioBlob.size < 100) {
-        console.error('TTS returned empty/tiny audio:', audioBlob.size);
-        setTtsState('error');
-        return;
-      }
-
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
-
-      audio.onended = () => {
+    const controller = streamTTS({
+      text,
+      languageCode,
+      onStart: () => {
+        setTtsState('playing');
+      },
+      onEnd: () => {
+        controllerRef.current = null;
         setTtsState('idle');
-        URL.revokeObjectURL(audioUrl);
-      };
-      audio.onerror = () => {
-        console.error('Audio playback error');
+      },
+      onError: () => {
+        controllerRef.current = null;
         setTtsState('error');
-        URL.revokeObjectURL(audioUrl);
-      };
+      },
+    });
 
-      setTtsState('playing');
-      await audio.play();
-    } catch (err) {
-      console.error('TTS error:', err);
-      setTtsState('error');
-    }
+    controllerRef.current = controller;
   }, [ttsState, text, languageCode]);
 
   const iconSize = size === 'md' ? 'w-5 h-5' : 'w-4 h-4';

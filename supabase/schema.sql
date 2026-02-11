@@ -9,6 +9,7 @@
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   clerk_user_id TEXT UNIQUE NOT NULL,
+  name TEXT,
   age INTEGER CHECK (age > 0 AND age < 150),
   gender TEXT CHECK (gender IN ('male', 'female', 'other', 'prefer_not_to_say')),
   pre_existing_conditions TEXT[] DEFAULT '{}',
@@ -94,8 +95,81 @@ CREATE POLICY "uploads_insert" ON medical_uploads
 CREATE POLICY "uploads_select_own" ON medical_uploads
   FOR SELECT USING (true);
 
--- ─── 5. Storage Bucket (optional) ───────────────────────────
+-- ─── 5. Conversation Messages ──────────────────────────────
+-- Individual chat messages for replaying past sessions.
+CREATE TABLE IF NOT EXISTS conversation_messages (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  clerk_user_id TEXT,
+  role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+  content TEXT NOT NULL,
+  language TEXT,
+  is_follow_up BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_conv_msg_session ON conversation_messages(session_id);
+CREATE INDEX IF NOT EXISTS idx_conv_msg_clerk_user ON conversation_messages(clerk_user_id);
+CREATE INDEX IF NOT EXISTS idx_conv_msg_created ON conversation_messages(created_at DESC);
+
+-- ─── 6. Triage Results ────────────────────────────────────
+-- Full JSON result for re-rendering past triage outcomes.
+CREATE TABLE IF NOT EXISTS triage_results (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  session_id TEXT UNIQUE NOT NULL,
+  clerk_user_id TEXT,
+  result_json JSONB NOT NULL,
+  thinking_content TEXT,
+  language TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_triage_results_session ON triage_results(session_id);
+CREATE INDEX IF NOT EXISTS idx_triage_results_clerk_user ON triage_results(clerk_user_id);
+CREATE INDEX IF NOT EXISTS idx_triage_results_created ON triage_results(created_at DESC);
+
+-- ─── 7. Telemetry Events ──────────────────────────────────
+-- Persistent telemetry (replaces in-memory store across deploys).
+CREATE TABLE IF NOT EXISTS telemetry_events (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  event_type TEXT NOT NULL CHECK (event_type IN ('triage', 'transcribe', 'tts')),
+  language TEXT,
+  input_mode TEXT,
+  severity TEXT,
+  confidence REAL,
+  is_emergency BOOLEAN,
+  latency_ms INTEGER,
+  had_error BOOLEAN,
+  text_length INTEGER,
+  success BOOLEAN,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_telemetry_created ON telemetry_events(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_telemetry_type ON telemetry_events(event_type);
+
+-- RLS for new tables
+ALTER TABLE conversation_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE triage_results ENABLE ROW LEVEL SECURITY;
+ALTER TABLE telemetry_events ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "conv_msg_insert" ON conversation_messages
+  FOR INSERT WITH CHECK (true);
+CREATE POLICY "conv_msg_select" ON conversation_messages
+  FOR SELECT USING (true);
+
+CREATE POLICY "triage_results_insert" ON triage_results
+  FOR INSERT WITH CHECK (true);
+CREATE POLICY "triage_results_select" ON triage_results
+  FOR SELECT USING (true);
+
+CREATE POLICY "telemetry_insert" ON telemetry_events
+  FOR INSERT WITH CHECK (true);
+CREATE POLICY "telemetry_select" ON telemetry_events
+  FOR SELECT USING (true);
+
+-- ─── 8. Storage Bucket (optional) ───────────────────────────
 -- Uncomment if you want to store original files in Supabase Storage:
--- INSERT INTO storage.buckets (id, name, public)
--- VALUES ('medical-files', 'medical-files', false)
--- ON CONFLICT DO NOTHING;
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('medical-files', 'medical-files', false)
+ON CONFLICT DO NOTHING;

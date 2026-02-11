@@ -2,6 +2,16 @@ import { NextRequest } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { saveMedicalUpload } from '@/lib/db';
 
+async function getClerkUserId(): Promise<string | null> {
+  try {
+    const { auth } = await import('@clerk/nextjs/server');
+    const { userId } = await auth();
+    return userId;
+  } catch {
+    return null;
+  }
+}
+
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -95,7 +105,9 @@ export async function POST(request: NextRequest) {
       isImage ? 'image' : 'other';
 
     // Persist to Supabase (fire-and-forget)
+    const clerkUserId = await getClerkUserId();
     saveMedicalUpload({
+      clerk_user_id: clerkUserId,
       file_name: file.name,
       file_type: docType,
       mime_type: file.type,

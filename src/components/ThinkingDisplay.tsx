@@ -24,7 +24,7 @@ export default function ThinkingDisplay({
   if (!content && !isThinking) return null;
 
   return (
-    <div className="w-full animate-fade-in" aria-live="polite">
+    <div className="w-full animate-fade-in thinking-border" aria-live="polite">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="flex items-center gap-2 text-sm font-medium text-purple-600
@@ -82,8 +82,8 @@ export default function ThinkingDisplay({
         <div
           id="thinking-content"
           ref={contentRef}
-          className="bg-purple-50 border border-purple-100 rounded-xl p-4
-                     max-h-64 overflow-y-auto scrollbar-hide transition-all duration-300"
+          className="bg-purple-50/60 backdrop-blur-sm border border-purple-100/60 rounded-xl p-4
+                     max-h-64 overflow-y-auto scrollbar-hide animate-scale-in"
         >
           <pre className="thinking-text whitespace-pre-wrap">
             {content || 'Starting analysis...'}
