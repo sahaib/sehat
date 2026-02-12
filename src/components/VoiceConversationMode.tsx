@@ -56,6 +56,9 @@ export default function VoiceConversationMode({
   isProcessing,
 }: VoiceConversationModeProps) {
   const [phase, setPhase] = useState<VoicePhase>('idle');
+  const [lastUserUtterance, setLastUserUtterance] = useState<string | null>(null);
+  const [uiError, setUiError] = useState<string | null>(null);
+  const [continuousMode, setContinuousMode] = useState(true);
   const ttsControllerRef = useRef<TTSPlaybackController | null>(null);
   const fillerControllerRef = useRef<TTSPlaybackController | null>(null);
   const lastSpokenRef = useRef<string | null>(null);
@@ -191,6 +194,7 @@ export default function VoiceConversationMode({
   const handleAudioReady = useCallback(
     async (blob: Blob) => {
       if (!mountedRef.current) return;
+      setUiError(null);
       setPhase('transcribing');
       try {
         const formData = new FormData();
@@ -201,6 +205,7 @@ export default function VoiceConversationMode({
         if (!response.ok) throw new Error('Transcription failed');
         const data = await response.json();
         if (data.text && mountedRef.current) {
+          setLastUserUtterance(data.text);
           setPhase('thinking');
 
           // Immediately play a contextual filler while Claude thinks.
@@ -226,6 +231,7 @@ export default function VoiceConversationMode({
           onTranscript(data.text);
         } else if (mountedRef.current) {
           // Empty transcript — go back to listening automatically
+          setUiError(language === 'en' ? 'Could not hear clearly. Try again.' : 'Could not hear clearly. Try again.');
           setPhase('idle');
           setTimeout(() => {
             if (mountedRef.current) startListeningRef.current();
@@ -233,6 +239,7 @@ export default function VoiceConversationMode({
         }
       } catch {
         if (mountedRef.current) {
+          setUiError(language === 'en' ? 'Transcription failed. Please try again.' : 'Transcription failed. Please try again.');
           setPhase('idle');
           // Auto-retry listening on transcription error
           setTimeout(() => {
@@ -244,9 +251,10 @@ export default function VoiceConversationMode({
     [language, onTranscript]
   );
 
-  const { isRecording, startRecording, stopRecording } = useVoiceRecorder(handleAudioReady);
+  const { isRecording, error: recorderError, startRecording, stopRecording } = useVoiceRecorder(handleAudioReady);
 
   const startListening = useCallback(async () => {
+    setUiError(null);
     setPhase('listening');
     try {
       await startRecording();
@@ -255,6 +263,12 @@ export default function VoiceConversationMode({
       if (mountedRef.current) setPhase('idle');
     }
   }, [startRecording]);
+
+  useEffect(() => {
+    if (recorderError) {
+      setUiError(recorderError);
+    }
+  }, [recorderError]);
 
   // Keep a stable ref so callbacks don't go stale
   const startListeningRef = useRef(startListening);
@@ -304,27 +318,32 @@ export default function VoiceConversationMode({
         ttsControllerRef.current = null;
         if (mountedRef.current) {
           setPhase('idle');
-          // Auto-listen after speaking
-          setTimeout(() => {
-            if (mountedRef.current) startListeningRef.current();
-          }, 400);
+          // Auto-listen after speaking (unless user paused continuous mode)
+          if (continuousMode) {
+            setTimeout(() => {
+              if (mountedRef.current) startListeningRef.current();
+            }, 400);
+          }
         }
       },
       onError: () => {
         ttsControllerRef.current = null;
         if (mountedRef.current) {
+          setUiError(language === 'en' ? 'Voice playback failed. Tap mic to continue.' : 'Voice playback failed. Tap mic to continue.');
           setPhase('idle');
           // Auto-listen on TTS error too so voice loop doesn't break
-          setTimeout(() => {
-            if (mountedRef.current) startListeningRef.current();
-          }, 400);
+          if (continuousMode) {
+            setTimeout(() => {
+              if (mountedRef.current) startListeningRef.current();
+            }, 400);
+          }
         }
       },
     });
 
     ttsControllerRef.current = controller;
     setPhase('speaking');
-  }, [textToSpeak, language]);
+  }, [continuousMode, language, textToSpeak]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -348,6 +367,7 @@ export default function VoiceConversationMode({
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleMicTap = () => {
+    setUiError(null);
     // Interrupt TTS / filler to start listening
     if (fillerControllerRef.current) {
       fillerControllerRef.current.stop();
@@ -416,6 +436,28 @@ export default function VoiceConversationMode({
         }`}>
           {label}
         </p>
+
+        {/* Quick context chips so users see what was heard / spoken */}
+        {(lastUserUtterance || (textToSpeak && phase === 'speaking')) && (
+          <div className="w-full max-w-md space-y-2">
+            {lastUserUtterance && (
+              <div className="rounded-2xl border border-white/60 bg-white/75 backdrop-blur-md px-4 py-2 text-xs text-gray-700 shadow-sm">
+                <span className="font-medium text-gray-500">You said:</span> {lastUserUtterance}
+              </div>
+            )}
+            {textToSpeak && phase === 'speaking' && (
+              <div className="rounded-2xl border border-teal-100 bg-teal-50/80 px-4 py-2 text-xs text-teal-800 shadow-sm">
+                <span className="font-medium text-teal-700">Assistant:</span> {textToSpeak.slice(0, 180)}{textToSpeak.length > 180 ? '…' : ''}
+              </div>
+            )}
+          </div>
+        )}
+
+        {uiError && (
+          <div className="w-full max-w-md rounded-2xl border border-red-200 bg-red-50/90 px-4 py-2 text-xs text-red-700 shadow-sm animate-fade-in">
+            {uiError}
+          </div>
+        )}
 
         {/* Mic button with animated ring */}
         <div className="relative flex items-center justify-center">
@@ -497,13 +539,26 @@ export default function VoiceConversationMode({
         )}
 
         {/* Exit button */}
-        <button
-          onClick={handleExit}
-          className="text-xs text-gray-400 hover:text-gray-600 transition-all duration-200
-                     px-4 py-1.5 rounded-full hover:bg-white/50 backdrop-blur-sm"
-        >
-          Switch to text
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setContinuousMode((prev) => !prev)}
+            className={`text-xs transition-all duration-200 px-4 py-1.5 rounded-full backdrop-blur-sm border ${
+              continuousMode
+                ? 'text-teal-700 border-teal-200 bg-teal-50/80 hover:bg-teal-100'
+                : 'text-gray-500 border-gray-200 bg-white/70 hover:bg-gray-50'
+            }`}
+          >
+            {continuousMode ? 'Continuous: ON' : 'Continuous: OFF'}
+          </button>
+
+          <button
+            onClick={handleExit}
+            className="text-xs text-gray-400 hover:text-gray-600 transition-all duration-200
+                       px-4 py-1.5 rounded-full hover:bg-white/50 backdrop-blur-sm"
+          >
+            Switch to text
+          </button>
+        </div>
       </div>
     </>
   );
