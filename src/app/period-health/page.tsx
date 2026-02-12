@@ -283,13 +283,26 @@ export default function PeriodHealthPage() {
             <p className="text-[10px] text-pink-400">{t(isAlly ? 'headerSubtitleAlly' : 'headerSubtitle', language)}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href="/history" className="text-xs text-gray-500 hover:text-pink-600 px-2.5 py-1.5 rounded-lg border border-gray-200 hover:border-pink-200 transition-colors">{t('history', language)}</Link>
-          <Link href="/dashboard" className="text-xs text-gray-500 hover:text-pink-600 px-2.5 py-1.5 rounded-lg border border-gray-200 hover:border-pink-200 transition-colors">{t('dashboard', language)}</Link>
-          <select value={language} onChange={(e) => setLanguage(e.target.value as Language)} className="text-xs border border-pink-200 rounded-lg px-2 py-1.5 text-gray-600 bg-white">
-            {SUPPORTED_LANGUAGES.map(l => (<option key={l.code} value={l.code}>{l.label}</option>))}
-          </select>
+        <div className="flex items-center gap-1.5">
+          <Link href="/history" className="text-xs text-gray-500 hover:text-pink-600 px-2.5 py-1.5 rounded-lg hover:bg-pink-50 transition-colors">{t('history', language)}</Link>
+          <Link href="/dashboard" className="text-xs text-gray-500 hover:text-pink-600 px-2.5 py-1.5 rounded-lg hover:bg-pink-50 transition-colors">{t('dashboard', language)}</Link>
         </div>
+      </div>
+      {/* Language pills — matching main page style with pink theme */}
+      <div className="max-w-3xl mx-auto px-4 pt-2 pb-1 flex gap-1.5 overflow-x-auto scrollbar-hide">
+        {SUPPORTED_LANGUAGES.map((l) => (
+          <button
+            key={l.code}
+            onClick={() => setLanguage(l.code)}
+            className={`px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap transition-all ${
+              language === l.code
+                ? 'bg-pink-500 text-white shadow-sm'
+                : 'bg-white text-gray-500 border border-gray-200 hover:border-pink-200 hover:text-pink-600'
+            }`}
+          >
+            {l.nativeLabel}
+          </button>
+        ))}
       </div>
     </header>
   );
