@@ -405,6 +405,20 @@
   border-color: rgba(13, 148, 136, 0.4) !important;
 }
 
+/* ─── Reduced motion — accessibility + low-end device perf ── */
+@media (prefers-reduced-motion: reduce) {
+  .gradient-blob,
+  .ambient-glow-orb,
+  .voice-ring {
+    animation: none !important;
+  }
+  .animate-pulse,
+  .animate-bounce,
+  .animate-spin {
+    animation: none !important;
+  }
+}
+
 /* ─── Print styles ────────────────────────────── */
 /* PDF export now uses a separate clean window (see DoctorSummary.tsx).
    These rules are minimal fallbacks for any direct window.print() usage. */

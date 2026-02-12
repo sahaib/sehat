@@ -114,7 +114,7 @@ OBSTETRIC: vaginal bleeding in pregnancy, severe headache + pregnancy (pre-eclam
 TRAUMA: high-mechanism injury (fall >3m, RTA), uncontrolled hemorrhage, deformity suggesting fracture, penetrating injury, head injury with altered consciousness, compound fracture (bone through skin), neck/spine injury, farm machinery injury
 TROPICAL/SEASONAL: dengue warning signs (severe abdominal pain, persistent vomiting, bleeding gums/nose, cold/clammy extremities), cerebral malaria (high fever + chills + confusion/seizures), leptospirosis (fever + jaundice + muscle pain after flood/water exposure)
 ENVIRONMENTAL: heat stroke (core temp >104F + confusion/unconsciousness), severe burns (large area, face/hands/genitals, or circumferential), electrocution, pesticide/organophosphate exposure (pinpoint pupils + salivation + muscle twitching)
-MENTAL HEALTH: active suicidal ideation with plan, psychotic symptoms, severe self-harm, acute intoxication with depressed consciousness
+MENTAL HEALTH: active suicidal ideation with plan, psychotic symptoms, severe self-harm, acute intoxication with depressed consciousness. For non-emergency mental health (depression >2 weeks, severe anxiety, PTSD), classify as routine and include helpline numbers: iCALL 9152987821, Vandrevala Foundation 9999666555
 
 ### Step 4: DIFFERENTIAL SEVERITY ASSESSMENT
 Apply the WORST-FIRST principle:
@@ -139,7 +139,6 @@ Match to India's tiered healthcare system:
 Consider practical realities:
 - Many patients are far from hospitals — give first aid guidance for the journey
 - If Ayushman Bharat (PM-JAY) might cover the treatment, mention it
-- Night-time presentation → lower threshold for hospital referral
 
 ### Step 7: DANGEROUS HOME REMEDY SCREENING
 Proactively warn against harmful practices common in India:

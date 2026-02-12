@@ -23,6 +23,7 @@ import TriageResult from '@/components/TriageResult';
 import DoctorSummary from '@/components/DoctorSummary';
 import VoiceInput from '@/components/VoiceInput';
 import VoiceConversationMode from '@/components/VoiceConversationMode';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import SignUpPrompt from '@/components/SignUpPrompt';
 import ProfileForm from '@/components/ProfileForm';
 import FileUpload from '@/components/FileUpload';
@@ -813,13 +814,15 @@ function Home() {
       <div className="flex-shrink-0 px-4 pb-4 pt-3 no-print safe-bottom z-10 relative"
            style={{ background: 'linear-gradient(to top, rgba(255,255,255,0.95) 60%, rgba(255,255,255,0))' }}>
         {isVoiceMode ? (
-          <VoiceConversationMode
-            language={state.language}
-            onTranscript={handleVoiceConversationSubmit}
-            onExit={() => setIsVoiceMode(false)}
-            textToSpeak={voiceTextToSpeak}
-            isProcessing={state.isStreaming || state.isThinking}
-          />
+          <ErrorBoundary>
+            <VoiceConversationMode
+              language={state.language}
+              onTranscript={handleVoiceConversationSubmit}
+              onExit={() => setIsVoiceMode(false)}
+              textToSpeak={voiceTextToSpeak}
+              isProcessing={state.isStreaming || state.isThinking}
+            />
+          </ErrorBoundary>
         ) : (
           <div className="relative">
             <TextInput

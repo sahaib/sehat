@@ -60,8 +60,6 @@ export async function* streamTriage(
         ? VOICE_THINKING_BUDGET
         : THINKING_BUDGET;
 
-      console.log(`[triage-agent] inputMode=${inputMode}, thinkingBudget=${thinkingBudget}`);
-
       const stream = client.messages.stream({
         model: MODEL_ID,
         max_tokens: 16000,
