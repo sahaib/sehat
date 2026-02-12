@@ -88,8 +88,28 @@ export async function* streamTriage(
         // also enable tools so Claude can make chained tool calls.
         const useTools = toolRound < MAX_TOOL_ROUNDS;
 
-        const systemPrompt = buildSystemPrompt(language, languageLabel)
-          + (patientProfile ? buildPatientContext(patientProfile, languageLabel) : '');
+        const baseSystemPrompt = buildSystemPrompt(language, languageLabel);
+        const patientContext = patientProfile ? buildPatientContext(patientProfile, languageLabel) : '';
+
+        // Use cache_control to cache the static system prompt and tools across requests.
+        // The base system prompt (~3K tokens) is stable — caching it cuts TTFT by 30-50%.
+        const systemBlocks: Anthropic.TextBlockParam[] = patientContext
+          ? [
+              { type: 'text', text: baseSystemPrompt },
+              { type: 'text', text: patientContext, cache_control: { type: 'ephemeral' } },
+            ]
+          : [
+              { type: 'text', text: baseSystemPrompt, cache_control: { type: 'ephemeral' } },
+            ];
+
+        // Cache tool definitions (stable across all requests)
+        const cachedTools = useTools
+          ? TRIAGE_TOOLS.map((tool, i) =>
+              i === TRIAGE_TOOLS.length - 1
+                ? { ...tool, cache_control: { type: 'ephemeral' as const } }
+                : tool
+            )
+          : undefined;
 
         const stream = client.messages.stream({
           model: MODEL_ID,
@@ -98,13 +118,14 @@ export async function* streamTriage(
             type: 'enabled',
             budget_tokens: thinkingBudget,
           },
-          system: systemPrompt,
+          system: systemBlocks,
           messages: agentMessages,
-          ...(useTools ? { tools: TRIAGE_TOOLS } : {}),
+          ...(cachedTools ? { tools: cachedTools } : {}),
         });
 
         let currentBlockType: 'thinking' | 'text' | 'tool_use' | null = null;
         let textAccumulator = '';
+        let earlyTtsEmitted = false;
         let currentToolName = '';
         let toolInputAccumulator = '';
         const toolUseBlocks: { id: string; name: string; input: Record<string, unknown> }[] = [];
@@ -139,6 +160,21 @@ export async function* streamTriage(
             ) {
               textAccumulator += event.delta.text;
               yield { type: 'text', content: event.delta.text };
+
+              // Early TTS: extract reasoning_summary from streaming JSON before full response.
+              // This lets the client start TTS synthesis 1-2s before the result event arrives.
+              if (!earlyTtsEmitted && textAccumulator.includes('"reasoning_summary"')) {
+                const match = textAccumulator.match(/"reasoning_summary"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+                if (match) {
+                  earlyTtsEmitted = true;
+                  try {
+                    const summary = JSON.parse(`"${match[1]}"`); // proper JSON unescape
+                    if (summary && summary.length > 10) {
+                      yield { type: 'early_tts', content: summary };
+                    }
+                  } catch { /* skip malformed */ }
+                }
+              }
             } else if (
               event.delta.type === 'input_json_delta' &&
               currentBlockType === 'tool_use'
@@ -184,14 +220,21 @@ export async function* streamTriage(
             content: contentBlocks,
           });
 
-          // Execute each tool and build tool_result messages
+          // Execute all tools in PARALLEL — all 13 triage tools are independent
+          // (no tool depends on another's output), saving 500-1500ms when multiple fire
+          const completedTools = await Promise.all(
+            toolUseBlocks.map(async (toolBlock) => {
+              const result = await executeTriageTool(toolBlock.name, toolBlock.input, toolCtx);
+              return { ...toolBlock, result };
+            })
+          );
+
           const toolResults: Anthropic.ToolResultBlockParam[] = [];
-          for (const toolBlock of toolUseBlocks) {
-            const result = await executeTriageTool(toolBlock.name, toolBlock.input, toolCtx);
-            yield { type: 'tool_result', name: toolBlock.name, result };
+          for (const { id, name, result } of completedTools) {
+            yield { type: 'tool_result', name, result };
             toolResults.push({
               type: 'tool_result',
-              tool_use_id: toolBlock.id,
+              tool_use_id: id,
               content: JSON.stringify(result),
             });
           }

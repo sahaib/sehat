@@ -445,6 +445,14 @@ function Home() {
                 }
                 case 'follow_up':
                   break;
+                case 'early_tts': {
+                  // Start TTS synthesis immediately — reasoning_summary extracted
+                  // from streaming JSON before full result arrives (saves 1-2s)
+                  const earlyLangCfg = SUPPORTED_LANGUAGES.find((l) => l.code === state.language);
+                  const earlySpCode = earlyLangCfg?.speechCode || 'en-IN';
+                  prewarmTTS(event.content, earlySpCode);
+                  break;
+                }
                 case 'tool_call':
                   dispatch({
                     type: 'STREAM_TOOL_CALL',

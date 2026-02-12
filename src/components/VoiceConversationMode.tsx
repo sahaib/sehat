@@ -4,8 +4,9 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Language } from '@/types';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { SUPPORTED_LANGUAGES } from '@/lib/constants';
-import { streamTTS, TTSPlaybackController } from '@/lib/tts-client';
+import { streamTTS, TTSPlaybackController, prewarmTTS } from '@/lib/tts-client';
 import { startCalmAudio, stopCalmAudio } from '@/lib/calm-audio';
+import { generateAcknowledgment } from '@/lib/voice-filler';
 
 type VoicePhase = 'idle' | 'listening' | 'transcribing' | 'thinking' | 'speaking';
 
@@ -56,9 +57,14 @@ export default function VoiceConversationMode({
 }: VoiceConversationModeProps) {
   const [phase, setPhase] = useState<VoicePhase>('idle');
   const ttsControllerRef = useRef<TTSPlaybackController | null>(null);
+  const fillerControllerRef = useRef<TTSPlaybackController | null>(null);
   const lastSpokenRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
   const stuckTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Barge-in detection: audio context + analyser for mic monitoring during TTS
+  const bargeinStreamRef = useRef<MediaStream | null>(null);
+  const bargeinContextRef = useRef<AudioContext | null>(null);
+  const bargeinIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Play calm ambient audio during thinking/transcribing phases
   useEffect(() => {
@@ -69,6 +75,96 @@ export default function VoiceConversationMode({
     }
     return () => { stopCalmAudio(); };
   }, [phase]);
+
+  // Barge-in detection: monitor mic during TTS playback, auto-stop when user speaks
+  useEffect(() => {
+    if (phase !== 'speaking') {
+      // Clean up barge-in monitoring when not speaking
+      if (bargeinIntervalRef.current) {
+        clearInterval(bargeinIntervalRef.current);
+        bargeinIntervalRef.current = null;
+      }
+      if (bargeinContextRef.current) {
+        bargeinContextRef.current.close().catch(() => {});
+        bargeinContextRef.current = null;
+      }
+      if (bargeinStreamRef.current) {
+        bargeinStreamRef.current.getTracks().forEach((t) => t.stop());
+        bargeinStreamRef.current = null;
+      }
+      return;
+    }
+
+    // Start monitoring after a 600ms delay (let TTS audio stabilize first,
+    // avoids false triggers from speaker → mic echo on initial playback)
+    const delayTimer = setTimeout(async () => {
+      if (!mountedRef.current || phase !== 'speaking') return;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        });
+        bargeinStreamRef.current = stream;
+
+        const ctx = new AudioContext();
+        bargeinContextRef.current = ctx;
+        const source = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 512;
+        analyser.smoothingTimeConstant = 0.3;
+        source.connect(analyser);
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        let consecutiveHigh = 0;
+        const THRESHOLD = 40;        // volume level to detect speech (0-255)
+        const SUSTAIN_COUNT = 3;     // consecutive checks needed (~300ms at 100ms interval)
+
+        bargeinIntervalRef.current = setInterval(() => {
+          if (!mountedRef.current || phase !== 'speaking') return;
+          analyser.getByteFrequencyData(dataArray);
+          // Average volume across frequency bins
+          const avg = dataArray.reduce((sum, v) => sum + v, 0) / dataArray.length;
+
+          if (avg > THRESHOLD) {
+            consecutiveHigh++;
+            if (consecutiveHigh >= SUSTAIN_COUNT) {
+              // Barge-in detected — user is speaking
+              console.log('[VoiceMode] Barge-in detected, stopping TTS');
+              if (ttsControllerRef.current) {
+                ttsControllerRef.current.stop();
+                ttsControllerRef.current = null;
+              }
+              if (fillerControllerRef.current) {
+                fillerControllerRef.current.stop();
+                fillerControllerRef.current = null;
+              }
+              // Transition to listening
+              startListeningRef.current();
+            }
+          } else {
+            consecutiveHigh = 0;
+          }
+        }, 100);
+      } catch {
+        // Mic access failed — barge-in won't work, but manual tap still does
+      }
+    }, 600);
+
+    return () => {
+      clearTimeout(delayTimer);
+      if (bargeinIntervalRef.current) {
+        clearInterval(bargeinIntervalRef.current);
+        bargeinIntervalRef.current = null;
+      }
+      if (bargeinContextRef.current) {
+        bargeinContextRef.current.close().catch(() => {});
+        bargeinContextRef.current = null;
+      }
+      if (bargeinStreamRef.current) {
+        bargeinStreamRef.current.getTracks().forEach((t) => t.stop());
+        bargeinStreamRef.current = null;
+      }
+    };
+  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Safety: reset stuck phases after timeout
   useEffect(() => {
@@ -106,6 +202,27 @@ export default function VoiceConversationMode({
         const data = await response.json();
         if (data.text && mountedRef.current) {
           setPhase('thinking');
+
+          // Immediately play a contextual filler while Claude thinks.
+          // "I hear your head is hurting. Let me assess..." fills the silence gap.
+          const fillerText = generateAcknowledgment(data.text, language);
+          const langConfig = SUPPORTED_LANGUAGES.find((l) => l.code === language);
+          const speechCode = langConfig?.speechCode || 'en-IN';
+
+          // Pre-warm the filler TTS (tiny text, synthesizes in ~100ms)
+          prewarmTTS(fillerText, speechCode);
+
+          // Play filler — stays in 'thinking' phase visually
+          const filler = streamTTS({
+            text: fillerText,
+            languageCode: speechCode,
+            onEnd: () => {
+              fillerControllerRef.current = null;
+            },
+          });
+          fillerControllerRef.current = filler;
+
+          // Fire the actual triage request in parallel
           onTranscript(data.text);
         } else if (mountedRef.current) {
           // Empty transcript — go back to listening automatically
@@ -158,6 +275,12 @@ export default function VoiceConversationMode({
   useEffect(() => {
     if (!textToSpeak || textToSpeak === lastSpokenRef.current) return;
     lastSpokenRef.current = textToSpeak;
+
+    // Stop filler audio if still playing — real response takes priority
+    if (fillerControllerRef.current) {
+      fillerControllerRef.current.stop();
+      fillerControllerRef.current = null;
+    }
 
     // Stop any ongoing TTS
     if (ttsControllerRef.current) {
@@ -217,11 +340,19 @@ export default function VoiceConversationMode({
         ttsControllerRef.current.stop();
         ttsControllerRef.current = null;
       }
+      if (fillerControllerRef.current) {
+        fillerControllerRef.current.stop();
+        fillerControllerRef.current = null;
+      }
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleMicTap = () => {
-    // Interrupt TTS to start listening
+    // Interrupt TTS / filler to start listening
+    if (fillerControllerRef.current) {
+      fillerControllerRef.current.stop();
+      fillerControllerRef.current = null;
+    }
     if (phase === 'speaking' && ttsControllerRef.current) {
       ttsControllerRef.current.stop();
       ttsControllerRef.current = null;
@@ -237,6 +368,10 @@ export default function VoiceConversationMode({
   };
 
   const handleExit = () => {
+    if (fillerControllerRef.current) {
+      fillerControllerRef.current.stop();
+      fillerControllerRef.current = null;
+    }
     if (ttsControllerRef.current) {
       ttsControllerRef.current.stop();
       ttsControllerRef.current = null;

@@ -89,7 +89,8 @@ export type StreamEvent =
   | { type: 'error'; message: string }
   | { type: 'emergency'; data: EmergencyDetection }
   | { type: 'tool_call'; name: string; input: Record<string, unknown> }
-  | { type: 'tool_result'; name: string; result: Record<string, unknown> };
+  | { type: 'tool_result'; name: string; result: Record<string, unknown> }
+  | { type: 'early_tts'; content: string };
 
 export interface ToolStep {
   name: string;
