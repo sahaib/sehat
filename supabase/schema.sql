@@ -193,7 +193,52 @@ CREATE POLICY "period_select" ON period_cycles FOR SELECT USING (true);
 CREATE POLICY "period_update" ON period_cycles FOR UPDATE USING (true);
 CREATE POLICY "period_delete" ON period_cycles FOR DELETE USING (true);
 
--- ─── 9. Storage Bucket (optional) ───────────────────────────
+-- ─── 9. Clinical Notes (from action tools) ──────────────────
+-- Saved silently by Claude's save_clinical_note tool when patient
+-- reveals chronic conditions, allergies, family history, etc.
+-- Retrieved by get_patient_history to enrich future triage sessions.
+CREATE TABLE IF NOT EXISTS clinical_notes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  clerk_user_id TEXT NOT NULL,
+  note_type TEXT NOT NULL CHECK (note_type IN ('chronic_condition', 'allergy', 'family_history', 'medication', 'observation')),
+  content TEXT NOT NULL,
+  severity_context TEXT,
+  session_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_clinical_notes_clerk_user ON clinical_notes(clerk_user_id);
+CREATE INDEX IF NOT EXISTS idx_clinical_notes_session ON clinical_notes(session_id);
+CREATE INDEX IF NOT EXISTS idx_clinical_notes_created ON clinical_notes(created_at DESC);
+
+ALTER TABLE clinical_notes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "clinical_notes_insert" ON clinical_notes FOR INSERT WITH CHECK (true);
+CREATE POLICY "clinical_notes_select" ON clinical_notes FOR SELECT USING (true);
+
+-- ─── 10. Follow-up Check Reminders ─────────────────────────
+-- Scheduled by Claude's schedule_followup_check tool when a
+-- condition warrants monitoring (fever, wound, medication response).
+CREATE TABLE IF NOT EXISTS followup_checks (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  clerk_user_id TEXT NOT NULL,
+  session_id TEXT,
+  check_at TIMESTAMPTZ NOT NULL,
+  reason TEXT NOT NULL,
+  escalation_criteria TEXT,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'escalated', 'dismissed')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_followup_checks_clerk_user ON followup_checks(clerk_user_id);
+CREATE INDEX IF NOT EXISTS idx_followup_checks_check_at ON followup_checks(check_at);
+CREATE INDEX IF NOT EXISTS idx_followup_checks_status ON followup_checks(status);
+
+ALTER TABLE followup_checks ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "followup_checks_insert" ON followup_checks FOR INSERT WITH CHECK (true);
+CREATE POLICY "followup_checks_select" ON followup_checks FOR SELECT USING (true);
+CREATE POLICY "followup_checks_update" ON followup_checks FOR UPDATE USING (true);
+
+-- ─── 11. Storage Bucket (optional) ───────────────────────────
 -- Uncomment if you want to store original files in Supabase Storage:
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('medical-files', 'medical-files', false)

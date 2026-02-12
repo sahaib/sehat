@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { buildSystemPrompt, getLanguageLabel } from './prompts';
-import { Language, Message, StreamEvent, TriageResult, FollowUpOption } from '@/types';
+import { Language, Message, StreamEvent, TriageResult, FollowUpOption, PatientProfile } from '@/types';
 import { MODEL_ID, THINKING_BUDGET, VOICE_THINKING_BUDGET } from './constants';
 import { sanitizeMessage, sanitizeConversationHistory } from './input-guard';
 import { TRIAGE_TOOLS, executeTriageTool, ToolContext } from './triage-tools';
@@ -19,13 +19,34 @@ function isRetryableError(error: unknown): boolean {
   return false;
 }
 
+/** Build a patient context preamble from stored profile data */
+function buildPatientContext(profile: PatientProfile, languageLabel: string): string {
+  const parts: string[] = [];
+
+  if (profile.name) parts.push(`Name: ${profile.name}`);
+  if (profile.age) parts.push(`Age: ${profile.age}`);
+  if (profile.gender) parts.push(`Gender: ${profile.gender}`);
+  if (profile.pre_existing_conditions && profile.pre_existing_conditions.length > 0) {
+    parts.push(`Known pre-existing conditions: ${profile.pre_existing_conditions.join(', ')}`);
+  }
+
+  if (parts.length === 0) return '';
+
+  return `\n\n## PATIENT CONTEXT (from stored health profile)
+The following is verified profile data for this patient. Use it to personalize your triage:
+${parts.join('\n')}
+
+IMPORTANT: Address the patient by name if available. Factor pre-existing conditions into severity thresholds (e.g., diabetes + fever = minimum urgent). Do NOT ask about conditions already listed here. All patient-facing output must still be in ${languageLabel}.`;
+}
+
 export async function* streamTriage(
   userMessage: string,
   language: Language,
   conversationHistory: Message[],
   inputMode?: 'text' | 'voice' | 'voice_conversation',
   clerkUserId?: string | null,
-  sessionId?: string | null
+  sessionId?: string | null,
+  patientProfile?: PatientProfile | null
 ): AsyncGenerator<StreamEvent> {
   const languageLabel = getLanguageLabel(language);
   const sanitizedHistory = sanitizeConversationHistory(conversationHistory);
@@ -67,6 +88,9 @@ export async function* streamTriage(
         // also enable tools so Claude can make chained tool calls.
         const useTools = toolRound < MAX_TOOL_ROUNDS;
 
+        const systemPrompt = buildSystemPrompt(language, languageLabel)
+          + (patientProfile ? buildPatientContext(patientProfile, languageLabel) : '');
+
         const stream = client.messages.stream({
           model: MODEL_ID,
           max_tokens: 16000,
@@ -74,7 +98,7 @@ export async function* streamTriage(
             type: 'enabled',
             budget_tokens: thinkingBudget,
           },
-          system: buildSystemPrompt(language, languageLabel),
+          system: systemPrompt,
           messages: agentMessages,
           ...(useTools ? { tools: TRIAGE_TOOLS } : {}),
         });

@@ -52,6 +52,14 @@ export interface TriageResult {
   disclaimer: string;
 }
 
+export interface PatientProfile {
+  name?: string | null;
+  age?: number | null;
+  gender?: string | null;
+  pre_existing_conditions?: string[];
+  preferred_language?: string | null;
+}
+
 export interface EmergencyDetection {
   isEmergency: boolean;
   matchedKeywords: string[];

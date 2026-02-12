@@ -1,11 +1,12 @@
 import { NextRequest } from 'next/server';
 import { detectEmergency } from '@/lib/emergency-detector';
 import { streamTriage } from '@/lib/triage-agent';
-import { TriageRequest, StreamEvent } from '@/types';
+import { TriageRequest, StreamEvent, PatientProfile } from '@/types';
 import { telemetry, InputMode, TriageEvent } from '@/lib/telemetry';
 import { saveTriageSession, saveConversationMessage, saveTriageResult } from '@/lib/db';
 import { validateLanguage, sanitizeMessage, sanitizeConversationHistory } from '@/lib/input-guard';
 import { rateLimit, getClientIP } from '@/lib/rate-limit';
+import { getServiceClient } from '@/lib/supabase';
 
 async function getClerkUserId(): Promise<string | null> {
   try {
@@ -35,6 +36,32 @@ export async function POST(request: NextRequest) {
     const body: TriageRequest = await request.json();
     const { message, conversationHistory, sessionId: rawSessionId, inputMode } = body;
     const clerkUserId = await getClerkUserId();
+
+    // Fetch patient profile for personalization (non-blocking — null if unavailable)
+    let patientProfile: PatientProfile | null = null;
+    if (clerkUserId) {
+      try {
+        const supabase = getServiceClient();
+        if (supabase) {
+          const { data } = await supabase
+            .from('profiles')
+            .select('name, age, gender, pre_existing_conditions, preferred_language')
+            .eq('clerk_user_id', clerkUserId)
+            .single();
+          if (data) {
+            patientProfile = {
+              name: data.name,
+              age: data.age,
+              gender: data.gender,
+              pre_existing_conditions: data.pre_existing_conditions || [],
+              preferred_language: data.preferred_language,
+            };
+          }
+        }
+      } catch {
+        // Profile fetch failed — continue without personalization
+      }
+    }
 
     // Validate and sanitize inputs
     const language = validateLanguage(body.language);
@@ -107,7 +134,8 @@ export async function POST(request: NextRequest) {
             sanitizedHistory,
             (inputMode as 'text' | 'voice' | 'voice_conversation') || 'text',
             clerkUserId,
-            sessionId
+            sessionId,
+            patientProfile
           )) {
             send(event);
 

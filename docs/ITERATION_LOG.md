@@ -180,6 +180,26 @@ The existing 10 agentic tools were read-only. Added 3 tools that **write data**,
 
 **Total tool count: 13** across 6 categories (Patient Context, Symptom Analysis, Specialist, Women's Health, Regional Intelligence, Actions).
 
+### Profile-Aware Personalization
+Previously, Claude started every triage session blind — it didn't know the patient's name, age, gender, or pre-existing conditions even for logged-in users. Profile data sat in Supabase unused.
+
+**Now:** The triage route fetches the user's stored profile and injects it directly into the system prompt:
+```
+## PATIENT CONTEXT (from stored health profile)
+Name: Sahaib
+Age: 28
+Gender: male
+Known pre-existing conditions: Diabetes, Hypertension
+```
+
+**Impact:**
+- Claude addresses the patient by name ("Sahaib ji, aapke lakshan...")
+- Pre-existing conditions automatically factor into severity thresholds (diabetes + fever = minimum urgent)
+- Claude doesn't waste a follow-up question asking about conditions it already knows
+- Anonymous users still work fine — context section is simply omitted
+
+**Database schema updated:** Added `clinical_notes` and `followup_checks` tables for action tools.
+
 ---
 
 ## Architecture Evolution
@@ -191,7 +211,7 @@ v0.3: Voice → Sarvam STT → Claude → JSON → Card + Sarvam TTS
 v0.4: Voice loop → Emergency bypass → Claude → TTS → Auto-listen
 v0.5: Full platform (history, reports, dashboard, period health, documents)
 v0.6: Security hardened, clinically audited, voice optimized
-v0.7: 13 agentic tools (read+write), interactive follow-up pills
+v0.7: 13 agentic tools (read+write), interactive follow-up pills, profile-aware personalization
 ```
 
 ## Prompt Evolution
