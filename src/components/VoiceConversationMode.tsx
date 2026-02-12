@@ -44,8 +44,8 @@ interface VoiceConversationModeProps {
   isProcessing: boolean;
 }
 
-// Safety timeout: if stuck in thinking/transcribing for >60s, reset to idle
-const STUCK_TIMEOUT = 60000;
+// Safety timeout: if stuck in thinking/transcribing for >20s, reset to idle
+const STUCK_TIMEOUT = 20000;
 
 export default function VoiceConversationMode({
   language,

@@ -78,6 +78,8 @@ export function useVoiceRecorder(
         setError('Recording failed. Please try again.');
         setIsRecording(false);
         stream.getTracks().forEach((track) => track.stop());
+        mediaRecorderRef.current = null;
+        chunksRef.current = [];
       };
 
       mediaRecorder.start(250); // Collect data every 250ms

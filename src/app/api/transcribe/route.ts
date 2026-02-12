@@ -22,6 +22,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Cap audio file size at 5MB (~30s recording)
+    if (audioFile.size > 5 * 1024 * 1024) {
+      return Response.json(
+        { error: 'Audio file too large. Please record a shorter message.' },
+        { status: 400 }
+      );
+    }
+
     const apiKey = process.env.SARVAM_API_KEY;
     if (!apiKey) {
       return Response.json(

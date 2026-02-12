@@ -250,7 +250,10 @@ function validateTriageResult(data: Record<string, unknown>): TriageResult {
       },
       do_not: cleanArr(actionPlan.do_not),
       first_aid: cleanArr(actionPlan.first_aid),
-      emergency_numbers: Array.isArray(actionPlan.emergency_numbers) ? actionPlan.emergency_numbers.filter((s): s is string => typeof s === 'string') : [],
+      // Only include emergency numbers for emergency/urgent — strip from routine/self_care
+      emergency_numbers: (severity === 'emergency' || severity === 'urgent') && Array.isArray(actionPlan.emergency_numbers)
+        ? actionPlan.emergency_numbers.filter((s): s is string => typeof s === 'string')
+        : [],
     },
     disclaimer: clean(data.disclaimer, 'This is AI-assisted triage guidance, not a medical diagnosis. Always consult a qualified healthcare provider. In emergency, call 112.'),
   };

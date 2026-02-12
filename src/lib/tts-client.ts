@@ -13,7 +13,15 @@ const MAX_CACHE_ENTRIES = 50;
 const audioCache = new Map<string, Blob>();
 
 function cacheKey(text: string, lang: string): string {
-  return `${lang}:${text.slice(0, 200)}`;
+  // Use a simple hash of the full text to avoid collisions from truncation
+  let hash = 0;
+  const str = `${lang}:${text}`;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + ch;
+    hash |= 0; // Convert to 32-bit int
+  }
+  return `${lang}:${hash}:${text.length}`;
 }
 
 function cacheSet(key: string, blob: Blob): void {

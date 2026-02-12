@@ -394,23 +394,20 @@ function Home() {
                   }
                   dispatch({ type: 'STREAM_RESULT', data: event.data });
 
-                  // Fire TTS pre-warm IMMEDIATELY — don't wait for stream to close.
-                  // This overlaps TTS synthesis with the remaining SSE events.
+                  // Fire TTS pre-warm for the ONE text that voice mode will actually speak.
+                  // This avoids 4-5 parallel TTS calls that waste Sarvam API quota.
                   const langCfg = SUPPORTED_LANGUAGES.find((l) => l.code === state.language);
                   const spCode = langCfg?.speechCode || 'en-IN';
                   if (event.data.is_medical_query === false) {
                     if (event.data.redirect_message) {
                       prewarmTTS(event.data.redirect_message, spCode);
                     }
-                  } else {
-                    const apText = [
-                      event.data.action_plan?.go_to,
-                      ...(event.data.action_plan?.first_aid || []),
-                    ].filter(Boolean).join('. ');
-                    if (apText) prewarmTTS(apText, spCode);
-                    if (event.data.reasoning_summary) prewarmTTS(event.data.reasoning_summary, spCode);
-                    // For follow-up questions
-                    if (event.data.follow_up_question) prewarmTTS(event.data.follow_up_question, spCode);
+                  } else if (event.data.needs_follow_up && event.data.follow_up_question) {
+                    // Voice mode will speak the follow-up question
+                    prewarmTTS(event.data.follow_up_question, spCode);
+                  } else if (event.data.reasoning_summary) {
+                    // Voice mode will speak the reasoning summary for final results
+                    prewarmTTS(event.data.reasoning_summary, spCode);
                   }
                   break;
                 }
@@ -506,22 +503,24 @@ function Home() {
   const voiceTextToSpeak = useMemo(() => {
     if (!isVoiceMode || state.isThinking) return null;
 
-    // Follow-up question from assistant
-    const lastMsg = state.messages[state.messages.length - 1];
-    if (lastMsg?.role === 'assistant' && lastMsg.isFollowUp) {
-      return lastMsg.content;
+    // Non-medical redirect
+    if (state.currentResult?.is_medical_query === false) {
+      return state.currentResult.redirect_message || null;
     }
 
-    // Final result — available as soon as STREAM_RESULT dispatches
+    // Follow-up question — check result.follow_up_question FIRST (most reliable),
+    // then fall back to last assistant message
+    if (state.currentResult?.needs_follow_up && state.currentResult.follow_up_question && state.followUpCount < MAX_FOLLOW_UPS) {
+      return state.currentResult.follow_up_question;
+    }
+
+    // Final result — speak reasoning summary
     if (state.currentResult && (!state.currentResult.needs_follow_up || state.followUpCount >= MAX_FOLLOW_UPS)) {
-      if (state.currentResult.is_medical_query === false) {
-        return state.currentResult.redirect_message || null;
-      }
       return state.currentResult.reasoning_summary;
     }
 
     return null;
-  }, [isVoiceMode, state.isThinking, state.messages, state.currentResult, state.followUpCount]);
+  }, [isVoiceMode, state.isThinking, state.currentResult, state.followUpCount]);
 
   // Pre-warm TTS for follow-up questions (voice mode will need them)
   useEffect(() => {

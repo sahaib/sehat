@@ -31,13 +31,25 @@ const EMERGENCY_KEYWORDS: Record<Language, EmergencyDictionary> = {
       'pregnancy bleeding', 'pregnant bleeding', 'miscarriage',
       'water broke early', 'premature labor',
       // Burns/Environment
-      'severe burn', 'electrocution', 'drowning', 'near drowning',
+      'severe burn', 'third degree burn', 'large burn', 'electrocution',
+      'drowning', 'near drowning', 'heat stroke', 'heat exhaustion',
+      // Allergic/Anaphylaxis
+      'anaphylaxis', 'anaphylactic', 'severe allergic reaction',
+      'throat swelling', 'throat closing', 'face swelling', 'tongue swelling',
+      'hives and breathing', 'allergic shock',
+      // Diabetic
+      'diabetic emergency', 'sugar very low', 'diabetic coma',
+      'blood sugar dangerously', 'insulin shock',
+      // Trauma expanded
+      'compound fracture', 'bone through skin', 'neck injury', 'spine injury',
+      'spinal injury', 'fell from height', 'hit by vehicle', 'road accident',
+      'farm machinery', 'farm accident',
       // Mental Health
       'suicide', 'suicidal', 'wants to die', 'self harm', 'killing myself',
       // General
       'dying', 'collapsed', 'no pulse', 'ambulance',
       // Animal
-      'snake bite', 'snakebite', 'dog bite rabies',
+      'snake bite', 'snakebite', 'dog bite rabies', 'scorpion sting',
     ],
     patterns: [
       /can'?t\s+breathe/i,
@@ -73,11 +85,22 @@ const EMERGENCY_KEYWORDS: Record<Language, EmergencyDictionary> = {
       'बच्चा नीला पड़ गया', 'बच्चे का गला घुट',
       // Obstetric
       'गर्भवती खून', 'प्रेगनेंसी में खून', 'गर्भपात', 'पानी की थैली फट गई',
+      // Allergic/Anaphylaxis
+      'एलर्जी', 'गला सूज गया', 'जीभ सूज गई', 'चेहरा सूज गया',
+      'सांस लेने में दिक्कत और सूजन',
+      // Diabetic
+      'शुगर बहुत कम', 'शुगर बहुत ज्यादा', 'डायबिटीज इमरजेंसी',
+      // Burns/Environment
+      'गंभीर जलन', 'बहुत जला', 'बिजली का झटका', 'लू लग गई',
+      'डूब रहा', 'डूब गया',
+      // Trauma expanded
+      'हड्डी बाहर आ गई', 'रीढ़ की चोट', 'गर्दन की चोट',
+      'ऊंचाई से गिरा', 'सड़क दुर्घटना', 'गाड़ी ने टक्कर मारी',
       // General
       'मर रहा', 'मर रही', 'गिर गया', 'गिर गई', 'एम्बुलेंस',
       'बचाओ', 'मदद करो', 'जान का खतरा',
       // Animal
-      'सांप ने काटा', 'सर्प दंश', 'कुत्ते ने काटा',
+      'सांप ने काटा', 'सर्प दंश', 'कुत्ते ने काटा', 'बिच्छू ने काटा',
       // Mental Health
       'खुदकुशी', 'आत्महत्या', 'मरना चाहता', 'मरना चाहती',
       // Transliterated English
@@ -110,10 +133,18 @@ const EMERGENCY_KEYWORDS: Record<Language, EmergencyDictionary> = {
       'குழந்தை மூச்சு', 'குழந்தை மயக்கம்', 'குழந்தை வலிப்பு',
       // Obstetric
       'கர்ப்பப்போக்கு', 'கர்ப்பத்தில் இரத்தப்போக்கு',
+      // Allergic/Anaphylaxis
+      'கடுமையான ஒவ்வாமை', 'தொண்டை வீக்கம்', 'முகம் வீக்கம்',
+      // Diabetic
+      'சர்க்கரை மிகக் குறைவு', 'நீரிழிவு அவசரநிலை',
+      // Burns/Environment
+      'கடுமையான தீக்காயம்', 'மின்சாரம் தாக்கியது', 'நீரில் மூழ்கல்', 'வெப்பவாதம்',
+      // Trauma expanded
+      'எலும்பு வெளியே', 'சாலை விபத்து', 'உயரத்தில் இருந்து விழுந்தது',
       // General
       'உயிருக்கு ஆபத்து', 'அம்புலன்ஸ்', 'இறக்கிறார்',
       // Animal
-      'பாம்பு கடி',
+      'பாம்பு கடி', 'தேள் கடி',
       // Mental Health
       'தற்கொலை',
     ],
@@ -138,10 +169,18 @@ const EMERGENCY_KEYWORDS: Record<Language, EmergencyDictionary> = {
       'విషం', 'విషం తాగాడు', 'పురుగుమందు',
       // Pediatric
       'బిడ్డకు శ్వాస', 'పిల్లవాడు స్పృహ',
+      // Allergic/Anaphylaxis
+      'తీవ్రమైన అలెర్జీ', 'గొంతు వాపు', 'ముఖం వాపు',
+      // Diabetic
+      'షుగర్ చాలా తక్కువ', 'డయాబెటిక్ ఎమర్జెన్సీ',
+      // Burns/Environment
+      'తీవ్రమైన కాలిన గాయం', 'విద్యుత్ షాక్', 'నీటిలో మునిగిపోయాడు',
+      // Trauma expanded
+      'ఎముక బయటకు వచ్చింది', 'రోడ్డు ప్రమాదం', 'ఎత్తు నుండి పడిపోయాడు',
       // General
       'ప్రాణాపాయం', 'అంబులెన్స్', 'చనిపోతున్నాడు',
       // Animal
-      'పాము కాటు',
+      'పాము కాటు', 'తేలు కుట్టింది',
       // Mental Health
       'ఆత్మహత్య',
     ],
@@ -167,10 +206,18 @@ const EMERGENCY_KEYWORDS: Record<Language, EmergencyDictionary> = {
       'विष', 'विष प्राशन', 'कीटकनाशक',
       // Pediatric
       'बाळाला श्वास', 'मूल बेशुद्ध',
+      // Allergic/Anaphylaxis
+      'तीव्र ऍलर्जी', 'घसा सुजला', 'चेहरा सुजला',
+      // Diabetic
+      'शुगर खूप कमी', 'मधुमेह आणीबाणी',
+      // Burns/Environment
+      'गंभीर भाजणे', 'विजेचा धक्का', 'बुडत आहे', 'उष्माघात',
+      // Trauma expanded
+      'हाड बाहेर आले', 'रस्ता अपघात', 'उंचीवरून पडले',
       // General
       'जीवाला धोका', 'रुग्णवाहिका', 'मरत आहे',
       // Animal
-      'सापाने चावले',
+      'सापाने चावले', 'विंचवाने चावले',
       // Mental Health
       'आत्महत्या',
     ],
@@ -193,10 +240,18 @@ const EMERGENCY_KEYWORDS: Record<Language, EmergencyDictionary> = {
       'ರಕ್ತಸ್ರಾವ', 'ತುಂಬಾ ರಕ್ತ', 'ತಲೆಗೆ ಪೆಟ್ಟು',
       // Poisoning
       'ವಿಷ', 'ವಿಷ ಕುಡಿದಿದ್ದಾರೆ', 'ಕೀಟನಾಶಕ',
+      // Allergic/Anaphylaxis
+      'ತೀವ್ರ ಅಲರ್ಜಿ', 'ಗಂಟಲು ಊತ', 'ಮುಖ ಊತ',
+      // Diabetic
+      'ಸಕ್ಕರೆ ತುಂಬಾ ಕಡಿಮೆ', 'ಮಧುಮೇಹ ತುರ್ತು',
+      // Burns/Environment
+      'ತೀವ್ರ ಸುಟ್ಟ ಗಾಯ', 'ವಿದ್ಯುತ್ ಆಘಾತ', 'ಮುಳುಗುತ್ತಿದ್ದಾರೆ',
+      // Trauma expanded
+      'ಮೂಳೆ ಹೊರಗೆ', 'ರಸ್ತೆ ಅಪಘಾತ', 'ಎತ್ತರದಿಂದ ಬಿದ್ದರು',
       // General
       'ಜೀವಕ್ಕೆ ಅಪಾಯ', 'ಆಂಬುಲೆನ್ಸ್', 'ಸಾಯುತ್ತಿದ್ದಾರೆ',
       // Animal
-      'ಹಾವು ಕಡಿತ',
+      'ಹಾವು ಕಡಿತ', 'ಚೇಳು ಕಡಿತ',
       // Mental Health
       'ಆತ್ಮಹತ್ಯೆ',
     ],
@@ -222,10 +277,18 @@ const EMERGENCY_KEYWORDS: Record<Language, EmergencyDictionary> = {
       'বিষ', 'বিষ খেয়েছে', 'কীটনাশক',
       // Pediatric
       'বাচ্চা শ্বাস নিচ্ছে না', 'বাচ্চা অজ্ঞান',
+      // Allergic/Anaphylaxis
+      'তীব্র অ্যালার্জি', 'গলা ফুলে গেছে', 'মুখ ফুলে গেছে',
+      // Diabetic
+      'সুগার খুব কম', 'ডায়াবেটিক ইমার্জেন্সি',
+      // Burns/Environment
+      'গুরুতর পোড়া', 'বৈদ্যুতিক শক', 'ডুবে যাচ্ছে',
+      // Trauma expanded
+      'হাড় বেরিয়ে এসেছে', 'সড়ক দুর্ঘটনা', 'উঁচু থেকে পড়ে গেছে',
       // General
       'প্রাণসংশয়', 'অ্যাম্বুলেন্স', 'মারা যাচ্ছে',
       // Animal
-      'সাপে কামড়েছে',
+      'সাপে কামড়েছে', 'বিছা কামড়েছে',
       // Mental Health
       'আত্মহত্যা',
     ],
