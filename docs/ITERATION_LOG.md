@@ -202,6 +202,61 @@ Known pre-existing conditions: Diabetes, Hypertension
 
 ---
 
+## v0.8 — Clinical & Professional UI Overhaul (Feb 13)
+
+**What changed:**
+
+### SehatOrb — Living Brand Identity
+Created a signature ambient orb component (`SehatOrb.tsx`) used across every page. A teal gradient circle with a `hue-rotate` CSS animation that cycles through the full health spectrum — teal → cyan → indigo → purple → pink → red → warm magenta → back to teal over 10 seconds. The orb is the same everywhere: main page header, sub-page headers (via AppShell), period health page, and a large hero version on the welcome screen.
+
+**Why hue-rotate:** Earlier attempts used `background-position` animation on gradients — the color shift was barely visible. `filter: hue-rotate()` is GPU-accelerated and creates dramatic, obvious color shifts across the entire element. The large hero orb also has a separate blurred glow div that shifts in sync.
+
+### AppShell — Shared Navigation Shell
+New `AppShell.tsx` component wrapping all sub-pages (dashboard, history, reports, analytics). Provides:
+- Sticky glass top bar with SehatOrb, gradient "Sehat" text, page title
+- Mobile bottom nav with 5 tabs (Home, History, Dashboard, Reports, Period Health), active state indicators
+- Consistent `max-w-5xl` content area with mobile safe-area padding
+
+### Design Token System
+Centralized card styling via CSS custom properties and utility classes in `globals.css`:
+- `.card-clinical` — unified card with `backdrop-blur-sm`, token-based shadows, hover elevation
+- `.section-label` — `11px uppercase tracking-wider` headers used in TriageResult and sub-pages
+- `.metric-value` — `tabular-nums` KPI values (fixed dashboard vs analytics inconsistency)
+- `.skeleton` — shimmer loading placeholders replacing spinner-based loading states
+- `.stagger-children` — CSS stagger animation (60ms intervals) for lists
+- `.divider-section` — subtle token-based section dividers
+
+### TriageResult — Visual Hierarchy Overhaul
+- Severity badge: emoji icons replaced with professional colored dots
+- Header row: severity + urgency timeframe in horizontal `flex justify-between` layout
+- "Where to go" elevated to a card-within-card (`bg-white/60 backdrop-blur-sm`) with `text-xl font-bold`
+- Emergency call buttons moved inside the primary action card
+- Section dividers between first aid, red flags, and do-not sections
+
+### ThinkingDisplay Enhancements
+- Progress bar: purple-to-indigo gradient fill showing step completion percentage
+- Raw reasoning view: dark terminal aesthetic (`bg-gray-900`, `text-gray-300` monospace)
+
+### Welcome Hero Redesign
+- Large SehatOrb (w-28) with blurred glow halo
+- Bigger greeting (`text-3xl`), improved subtitle contrast
+- "Tap the mic or type below" quick-start hint with mic icon
+
+### Additional Polish
+- Chat loading: skeleton chat bubble replacing shimmer bars
+- TextInput: uses `.input-active-glow` utility (enhanced ring + shadow)
+- FollowUpOptions: `bg-white/80`, `shadow-sm`, `hover:shadow-md`, `stagger-children`
+- EmergencyBanner: `.emergency-shake` on mount + `ring-4 ring-white/30` on call button
+- ConversationThread: `stagger-children` entry animation
+- DoctorSummary: `card-clinical` card style
+- Voice mode icon: waveform bars replacing speaker icon
+- Glass effects: enhanced `backdrop-filter: blur(20px) saturate(1.2)` on headers and inputs
+- All sub-pages: consistent card styling, skeleton loading, branded empty states
+
+**Files changed:** 17 (15 modified + 2 new components)
+
+---
+
 ## Architecture Evolution
 
 ```
@@ -212,6 +267,7 @@ v0.4: Voice loop → Emergency bypass → Claude → TTS → Auto-listen
 v0.5: Full platform (history, reports, dashboard, period health, documents)
 v0.6: Security hardened, clinically audited, voice optimized
 v0.7: 13 agentic tools (read+write), interactive follow-up pills, profile-aware personalization
+v0.8: Clinical UI overhaul — SehatOrb, AppShell, design tokens, visual hierarchy
 ```
 
 ## Prompt Evolution
@@ -230,9 +286,9 @@ The system prompt went through 6 major revisions:
 
 ## Key Metrics
 
-- **55 commits** over 3 days
-- **~11,700 lines** of TypeScript
-- **58 source files** across 12 API routes, 19 components, 7 pages
+- **56 commits** over 4 days
+- **~12,100 lines** of TypeScript
+- **60 source files** across 12 API routes, 21 components, 7 pages
 - **13 agentic tools** (10 read + 3 write) with multi-turn tool-use loop
 - **7 Indian languages** with code-mixing support
 - **200+ emergency keywords** across all languages

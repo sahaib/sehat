@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { TriageResult as TriageResultType, Severity } from '@/types';
 import { SEVERITY_CONFIG, URGENCY_LABELS, SUPPORTED_LANGUAGES } from '@/lib/constants';
 import RenderMarkdown from '@/components/RenderMarkdown';
+import AppShell from '@/components/AppShell';
 
 function esc(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -120,7 +121,7 @@ function TriageCard({ report, copiedId, onCopy }: {
 
   return (
     <div
-      className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md"
+      className="card-clinical overflow-hidden transition-all duration-200 hover:shadow-md"
       style={{ borderLeftWidth: 4, borderLeftColor: severityColor }}
     >
       {/* Collapsed header — always visible */}
@@ -380,60 +381,35 @@ export default function ReportsPage() {
   const isEmpty = triageReports.length === 0 && documentAnalyses.length === 0;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-20">
-        <div className="max-w-3xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Link href="/" className="text-teal-600 hover:text-teal-700 transition-colors">
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-                </svg>
-              </Link>
-              <h1 className="text-lg font-bold text-gray-800">Medical Reports</h1>
-            </div>
-            <div className="flex gap-1.5">
-              <Link href="/history" className="text-xs text-gray-500 hover:text-teal-600 px-3 py-1.5 rounded-lg hover:bg-teal-50 transition-colors">
-                History
-              </Link>
-              <Link href="/dashboard" className="text-xs text-gray-500 hover:text-teal-600 px-3 py-1.5 rounded-lg hover:bg-teal-50 transition-colors">
-                Dashboard
-              </Link>
-            </div>
-          </div>
-
-          {/* Tabs */}
-          {!isEmpty && (
-            <div className="flex gap-1 mt-3">
+    <AppShell title="Reports">
+      <div className="max-w-3xl mx-auto space-y-4">
+        {/* Tabs */}
+        {!isEmpty && (
+          <div className="flex gap-1">
+            <button
+              onClick={() => setTab('triage')}
+              className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                tab === 'triage'
+                  ? 'bg-teal-600 text-white'
+                  : 'text-gray-500 hover:bg-gray-100'
+              }`}
+            >
+              Triage ({severityCounts.all || 0})
+            </button>
+            {documentAnalyses.length > 0 && (
               <button
-                onClick={() => setTab('triage')}
+                onClick={() => setTab('documents')}
                 className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                  tab === 'triage'
+                  tab === 'documents'
                     ? 'bg-teal-600 text-white'
                     : 'text-gray-500 hover:bg-gray-100'
                 }`}
               >
-                Triage ({severityCounts.all || 0})
+                Documents ({documentAnalyses.length})
               </button>
-              {documentAnalyses.length > 0 && (
-                <button
-                  onClick={() => setTab('documents')}
-                  className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                    tab === 'documents'
-                      ? 'bg-teal-600 text-white'
-                      : 'text-gray-500 hover:bg-gray-100'
-                  }`}
-                >
-                  Documents ({documentAnalyses.length})
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      </header>
-
-      <div className="max-w-3xl mx-auto px-4 py-4 space-y-4">
+            )}
+          </div>
+        )}
         {isEmpty ? (
           <div className="text-center py-16 space-y-3">
             <div className="w-16 h-16 mx-auto rounded-full bg-gray-100 flex items-center justify-center">
@@ -501,7 +477,7 @@ export default function ReportsPage() {
                 {documentAnalyses.map((doc) => {
                   const date = new Date(doc.created_at);
                   return (
-                    <div key={doc.id} className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div key={doc.id} className="card-clinical overflow-hidden">
                       <div className="p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -541,6 +517,6 @@ export default function ReportsPage() {
           </>
         )}
       </div>
-    </div>
+    </AppShell>
   );
 }

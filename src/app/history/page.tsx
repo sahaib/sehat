@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { SEVERITY_CONFIG } from '@/lib/constants';
 import { Severity } from '@/types';
+import AppShell from '@/components/AppShell';
 
 interface SessionSummary {
   session_id: string;
@@ -101,31 +102,9 @@ export default function HistoryPage() {
   const totalPages = Math.ceil(total / limit);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Sticky header with glassmorphism */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-20">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="text-teal-600 hover:text-teal-700 transition-colors">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-              </svg>
-            </Link>
-            <h1 className="text-lg font-bold text-gray-800">Chat History</h1>
-            {!loading && <span className="text-xs text-gray-400">{total} session{total !== 1 ? 's' : ''}</span>}
-          </div>
-          <div className="flex gap-1.5">
-            <Link href="/reports" className="text-xs text-gray-500 hover:text-teal-600 px-3 py-1.5 rounded-lg hover:bg-teal-50 transition-colors">
-              Reports
-            </Link>
-            <Link href="/dashboard" className="text-xs text-gray-500 hover:text-teal-600 px-3 py-1.5 rounded-lg hover:bg-teal-50 transition-colors">
-              Dashboard
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <div className="max-w-3xl mx-auto px-4 py-4 space-y-3 relative">
+    <AppShell title="History">
+      <div className="max-w-3xl mx-auto space-y-3 relative">
+        {!loading && <p className="text-xs text-gray-400 mb-2">{total} session{total !== 1 ? 's' : ''}</p>}
         {/* Loading overlay for pagination */}
         {loading && sessions.length > 0 && (
           <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-10 flex items-start justify-center pt-20">
@@ -143,10 +122,13 @@ export default function HistoryPage() {
         {/* Empty state */}
         {!loading && sessions.length === 0 && (
           <div className="text-center py-16 space-y-3">
-            <div className="w-16 h-16 mx-auto rounded-full bg-gray-100 flex items-center justify-center">
-              <svg className="w-8 h-8 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
-              </svg>
+            <div className="relative w-16 h-16 mx-auto">
+              <div className="absolute inset-0 rounded-full bg-teal-400/20 blur-xl" aria-hidden="true" />
+              <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-teal-100 to-teal-200/60 flex items-center justify-center">
+                <svg className="w-8 h-8 text-teal-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
+                </svg>
+              </div>
             </div>
             <p className="text-gray-400">No triage sessions yet</p>
             <Link href="/" className="inline-block px-5 py-2 bg-teal-600 text-white text-sm rounded-xl font-medium hover:bg-teal-700 transition-colors">
@@ -156,6 +138,7 @@ export default function HistoryPage() {
         )}
 
         {/* Session cards */}
+        <div className="space-y-3 stagger-children">
         {sessions.map((s) => {
           const config = s.severity ? SEVERITY_CONFIG[s.severity] : null;
           const date = new Date(s.created_at);
@@ -164,7 +147,7 @@ export default function HistoryPage() {
           return (
             <div
               key={s.session_id}
-              className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-md transition-all"
+              className="card-clinical overflow-hidden"
               style={{ borderLeftWidth: 4, borderLeftColor: severityColor }}
             >
               <Link href={`/history/${s.session_id}`} className="block p-4">
@@ -227,6 +210,7 @@ export default function HistoryPage() {
             </div>
           );
         })}
+        </div>
 
         {/* Pagination */}
         {totalPages > 1 && (
@@ -251,6 +235,6 @@ export default function HistoryPage() {
           </div>
         )}
       </div>
-    </div>
+    </AppShell>
   );
 }

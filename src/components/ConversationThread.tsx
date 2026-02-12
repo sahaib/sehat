@@ -24,7 +24,7 @@ export default function ConversationThread({
   const speechCode = SUPPORTED_LANGUAGES.find((l) => l.code === language)?.speechCode || 'en-IN';
 
   return (
-    <div className="flex flex-col gap-3 w-full" role="log" aria-label="Conversation">
+    <div className="flex flex-col gap-3 w-full stagger-children" role="log" aria-label="Conversation">
       {messages.map((msg) => (
         <div
           key={msg.id}

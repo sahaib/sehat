@@ -10,16 +10,23 @@ interface TriageResultProps {
   language?: Language;
 }
 
+const SEVERITY_DOT_COLORS: Record<Severity, string> = {
+  emergency: 'bg-red-500',
+  urgent: 'bg-orange-500',
+  routine: 'bg-yellow-500',
+  self_care: 'bg-green-500',
+};
+
 function SeverityBadge({ severity }: { severity: Severity }) {
   const config = SEVERITY_CONFIG[severity];
   return (
     <div
-      className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold text-lg
+      className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-sm font-bold
                   ${config.bgColor} ${config.textColor} border ${config.borderColor}`}
       role="status"
       aria-label={`Severity: ${config.label}`}
     >
-      <span aria-hidden="true">{config.icon}</span>
+      <span className={`w-2.5 h-2.5 rounded-full ${SEVERITY_DOT_COLORS[severity]}`} aria-hidden="true" />
       <span>{config.label}</span>
     </div>
   );
@@ -29,14 +36,14 @@ function ConfidenceBar({ confidence }: { confidence: number }) {
   const percent = Math.round(confidence * 100);
   return (
     <div className="flex items-center gap-2 text-sm text-gray-500">
-      <span>Confidence:</span>
+      <span className="section-label">Confidence</span>
       <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden max-w-32" role="progressbar" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}>
         <div
           className="h-full bg-teal-500 rounded-full transition-all duration-700 ease-out"
           style={{ width: `${percent}%` }}
         />
       </div>
-      <span className="font-medium text-gray-700">{percent}%</span>
+      <span className="font-medium text-gray-700 tabular-nums">{percent}%</span>
     </div>
   );
 }
@@ -50,10 +57,8 @@ export default function TriageResult({ result, language }: TriageResultProps) {
     ...result.action_plan.first_aid,
   ].join('. ');
 
-  // Get the correct speech code for the selected language
   const speechCode = SUPPORTED_LANGUAGES.find((l) => l.code === language)?.speechCode || 'en-IN';
 
-  // Only show emergency numbers for emergency and urgent severity
   const showEmergencyNumbers =
     (result.severity === 'emergency' || result.severity === 'urgent') &&
     result.action_plan.emergency_numbers &&
@@ -66,58 +71,56 @@ export default function TriageResult({ result, language }: TriageResultProps) {
       aria-label={`Triage result: ${config.label}`}
       aria-live="polite"
     >
-      {/* Header: Severity + Confidence */}
-      <div className="flex flex-col gap-3 mb-4">
+      {/* Header: Severity + Urgency in a row */}
+      <div className="flex items-center justify-between gap-3 mb-3">
         <SeverityBadge severity={result.severity} />
+        <div className={`flex items-center gap-1.5 text-sm font-semibold ${config.textColor}`}>
+          <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>{urgencyLabel}</span>
+        </div>
+      </div>
+
+      {/* Confidence */}
+      <div className="mb-4">
         <ConfidenceBar confidence={result.confidence} />
       </div>
 
-      {/* Urgency timeframe */}
-      <div className={`text-base font-semibold ${config.textColor} mb-4 flex items-center gap-2`}>
-        <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        {urgencyLabel}
-      </div>
+      {/* Primary action card: Where to go */}
+      <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-white/40 mb-4">
+        <h3 className="section-label mb-1.5">Where to go</h3>
+        <p className="text-xl font-bold text-gray-800">{inlineFormat(result.action_plan.go_to)}</p>
 
-      {/* Where to go */}
-      <div className="mb-4">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
-          Where to go
-        </h3>
-        <p className="text-lg font-medium text-gray-800">{inlineFormat(result.action_plan.go_to)}</p>
+        {/* Emergency numbers inside the primary card */}
+        {showEmergencyNumbers && (
+          <div className="flex gap-2 mt-3">
+            {result.action_plan.emergency_numbers!.map((num) => (
+              <a
+                key={num}
+                href={`tel:${num}`}
+                className="flex items-center gap-2 px-4 py-2 bg-emergency-600 text-white
+                           rounded-xl font-bold text-lg active:scale-95 transition-transform
+                           shadow-md hover:bg-emergency-700"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path
+                    fillRule="evenodd"
+                    d="M1.5 4.5a3 3 0 013-3h1.372c.86 0 1.61.586 1.819 1.42l1.105 4.423a1.875 1.875 0 01-.694 1.955l-1.293.97c-.135.101-.164.249-.126.352a11.285 11.285 0 006.697 6.697c.103.038.25.009.352-.126l.97-1.293a1.875 1.875 0 011.955-.694l4.423 1.105c.834.209 1.42.959 1.42 1.82V19.5a3 3 0 01-3 3h-2.25C8.552 22.5 1.5 15.448 1.5 6.75V4.5z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                {num}
+              </a>
+            ))}
+          </div>
+        )}
       </div>
-
-      {/* Emergency numbers — ONLY for emergency/urgent */}
-      {showEmergencyNumbers && (
-        <div className="flex gap-2 mb-4">
-          {result.action_plan.emergency_numbers!.map((num) => (
-            <a
-              key={num}
-              href={`tel:${num}`}
-              className="flex items-center gap-2 px-4 py-2 bg-emergency-600 text-white
-                         rounded-xl font-bold text-lg active:scale-95 transition-transform
-                         shadow-md hover:bg-emergency-700"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                <path
-                  fillRule="evenodd"
-                  d="M1.5 4.5a3 3 0 013-3h1.372c.86 0 1.61.586 1.819 1.42l1.105 4.423a1.875 1.875 0 01-.694 1.955l-1.293.97c-.135.101-.164.249-.126.352a11.285 11.285 0 006.697 6.697c.103.038.25.009.352-.126l.97-1.293a1.875 1.875 0 011.955-.694l4.423 1.105c.834.209 1.42.959 1.42 1.82V19.5a3 3 0 01-3 3h-2.25C8.552 22.5 1.5 15.448 1.5 6.75V4.5z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              {num}
-            </a>
-          ))}
-        </div>
-      )}
 
       {/* First aid */}
       {result.action_plan.first_aid.length > 0 && (
         <div className="mb-4">
-          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">
-            Immediate steps
-          </h3>
+          <h3 className="section-label mb-2">Immediate steps</h3>
           <ol className="space-y-1.5">
             {result.action_plan.first_aid.map((step, i) => (
               <li key={i} className="flex gap-2 text-gray-700">
@@ -132,10 +135,13 @@ export default function TriageResult({ result, language }: TriageResultProps) {
         </div>
       )}
 
+      {/* Section divider */}
+      {result.red_flags.length > 0 && <div className="divider-section mb-4" />}
+
       {/* Warning signs / red flags */}
       {result.red_flags.length > 0 && (
         <div className="mb-4 bg-white/50 rounded-xl p-3">
-          <h3 className="text-sm font-semibold text-emergency-700 uppercase tracking-wide mb-2 flex items-center gap-1">
+          <h3 className="section-label text-emergency-700 mb-2 flex items-center gap-1">
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
               <path
                 fillRule="evenodd"
@@ -156,12 +162,13 @@ export default function TriageResult({ result, language }: TriageResultProps) {
         </div>
       )}
 
+      {/* Section divider */}
+      {result.action_plan.do_not.length > 0 && <div className="divider-section mb-4" />}
+
       {/* Do NOT do this */}
       {result.action_plan.do_not.length > 0 && (
         <div className="mb-4 bg-emergency-50 border border-emergency-200 rounded-xl p-3">
-          <h3 className="text-sm font-semibold text-emergency-700 uppercase tracking-wide mb-2">
-            Do NOT do this
-          </h3>
+          <h3 className="section-label text-emergency-700 mb-2">Do NOT do this</h3>
           <ul className="space-y-1">
             {result.action_plan.do_not.map((item, i) => (
               <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
@@ -173,7 +180,7 @@ export default function TriageResult({ result, language }: TriageResultProps) {
         </div>
       )}
 
-      {/* Read aloud button — Sarvam TTS */}
+      {/* Read aloud button */}
       <div className="mt-2">
         <ReadAloudButton text={actionPlanText} languageCode={speechCode} size="sm" />
       </div>

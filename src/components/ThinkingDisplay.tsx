@@ -284,6 +284,16 @@ export default function ThinkingDisplay({
 
       {isExpanded && (
         <div className="bg-purple-50/60 backdrop-blur-sm border border-purple-100/60 rounded-xl p-4 animate-scale-in space-y-3">
+          {/* Progress bar */}
+          {isThinking && (
+            <div className="h-1 bg-purple-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all duration-700 ease-out"
+                style={{ width: `${Math.round((completedCount / STEP_DEFINITIONS.length) * 100)}%` }}
+              />
+            </div>
+          )}
+
           {/* Step-by-step progress */}
           <div className="space-y-2">
             {STEP_DEFINITIONS.map((step, i) => {
@@ -399,11 +409,11 @@ export default function ThinkingDisplay({
             {showRaw && (
               <div
                 ref={contentRef}
-                className="mt-2 bg-purple-100/40 rounded-lg p-3 max-h-48 overflow-y-auto scrollbar-hide"
+                className="mt-2 bg-gray-900 rounded-lg p-3 max-h-48 overflow-y-auto scrollbar-hide"
               >
-                <pre className="thinking-text whitespace-pre-wrap text-xs">
+                <pre className="font-mono text-xs text-gray-300 whitespace-pre-wrap leading-relaxed">
                   {content || 'Starting medical analysis...'}
-                  {isThinking && <span className="inline-block w-2 h-4 bg-purple-400 ml-0.5 animate-pulse rounded-sm" />}
+                  {isThinking && <span className="inline-block w-2 h-4 bg-gray-400 ml-0.5 animate-pulse rounded-sm" />}
                 </pre>
               </div>
             )}

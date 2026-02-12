@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import AppShell from '@/components/AppShell';
 
 interface Metrics {
   totalTriages: number;
@@ -98,9 +99,9 @@ function Bar({ value, max, color }: { value: number; max: number; color: string 
 
 function KPICard({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: string }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm">
-      <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">{label}</p>
-      <p className={`text-2xl font-bold mt-1 ${accent || 'text-gray-800'}`}>{value}</p>
+    <div className="card-clinical p-4">
+      <p className="section-label">{label}</p>
+      <p className={`metric-value mt-1 ${accent || 'text-gray-800'}`}>{value}</p>
       {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
     </div>
   );
@@ -151,23 +152,13 @@ export default function AnalyticsPage() {
   const inputTotal = metrics.inputModeDistribution.text + metrics.inputModeDistribution.voice + metrics.inputModeDistribution.voice_conversation;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <Link href="/" className="text-teal-600 hover:text-teal-700">
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
-                </svg>
-              </Link>
-              <h1 className="text-lg font-bold text-gray-800">Sehat Impact Dashboard</h1>
-            </div>
-            <p className="text-xs text-gray-400 mt-0.5">
-              Every triage = someone getting health guidance who might not have had access
-            </p>
-          </div>
+    <AppShell title="Analytics">
+      <div className="space-y-6">
+        {/* Subtitle + status */}
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-gray-400">
+            Every triage = someone getting health guidance who might not have had access
+          </p>
           <div className="flex items-center gap-3">
             {metrics.isAdmin && (
               <span className="text-[10px] font-medium bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">Admin</span>
@@ -181,9 +172,6 @@ export default function AnalyticsPage() {
             </div>
           </div>
         </div>
-      </header>
-
-      <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
         {/* KPI Row */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <KPICard
@@ -223,7 +211,7 @@ export default function AnalyticsPage() {
         {/* Middle Row: Severity + Languages */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Severity Distribution */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+          <div className="card-clinical p-5">
             <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-4">
               Severity Distribution
             </h2>
@@ -247,7 +235,7 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Language Distribution */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+          <div className="card-clinical p-5">
             <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-4">
               Languages Served
             </h2>
@@ -272,7 +260,7 @@ export default function AnalyticsPage() {
         {/* Bottom Row: Input Mode + Voice Pipeline + Quality */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Input Mode */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+          <div className="card-clinical p-5">
             <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-4">
               Input Mode
             </h2>
@@ -296,7 +284,7 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Voice Pipeline */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+          <div className="card-clinical p-5">
             <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-4">
               Voice Pipeline
             </h2>
@@ -333,7 +321,7 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Quality Metrics */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+          <div className="card-clinical p-5">
             <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-4">
               Quality Metrics
             </h2>
@@ -371,7 +359,7 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Recent Activity — visible to admins only */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+        <div className="card-clinical p-5">
           <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wider mb-4">
             Recent Activity
             {!metrics.isAdmin && <span className="text-[10px] text-gray-400 font-normal ml-2">(admin only)</span>}
@@ -431,6 +419,6 @@ export default function AnalyticsPage() {
           {metrics.dataSource === 'supabase' ? ' Data persisted in Supabase.' : ' Data resets on deploy.'}
         </p>
       </div>
-    </div>
+    </AppShell>
   );
 }

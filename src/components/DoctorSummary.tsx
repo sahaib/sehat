@@ -384,7 +384,7 @@ export default function DoctorSummary({
   };
 
   return (
-    <div className="doctor-summary w-full bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden animate-slide-up">
+    <div className="doctor-summary w-full card-clinical overflow-hidden animate-slide-up">
       {/* Header */}
       <div className="bg-gray-50 px-5 py-3 border-b border-gray-200 flex items-center gap-2">
         <svg

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import AppShell from '@/components/AppShell';
 
 interface DashboardData {
   total: number;
@@ -46,9 +47,9 @@ const SEVERITY_TEXT_COLORS: Record<string, string> = {
 
 function KPICard({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: string }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-      <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">{label}</p>
-      <p className={`text-3xl font-bold mt-1 ${accent || 'text-gray-800'}`}>{value}</p>
+    <div className="card-clinical p-5">
+      <p className="section-label">{label}</p>
+      <p className={`metric-value text-3xl mt-1 ${accent || 'text-gray-800'}`}>{value}</p>
       {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
     </div>
   );
@@ -80,29 +81,30 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-white border-b border-gray-200 px-4 py-4">
-          <div className="max-w-4xl mx-auto flex items-center gap-2">
-            <div className="w-5 h-5 rounded bg-gray-200 animate-pulse" />
-            <div className="w-32 h-5 rounded bg-gray-200 animate-pulse" />
-          </div>
-        </header>
-        <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+      <AppShell title="Health Dashboard">
+        <div className="space-y-6">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-gray-200 p-5">
-                <div className="w-20 h-3 bg-gray-100 rounded animate-pulse mb-2" />
-                <div className="w-12 h-8 bg-gray-100 rounded animate-pulse" />
+              <div key={i} className="card-clinical p-5">
+                <div className="skeleton h-3 w-20 mb-3" />
+                <div className="skeleton h-8 w-16" />
               </div>
             ))}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[...Array(2)].map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-gray-200 p-5 h-48 animate-pulse" />
+              <div key={i} className="card-clinical p-5 h-48">
+                <div className="skeleton h-3 w-32 mb-4" />
+                <div className="space-y-3">
+                  <div className="skeleton h-5 w-full" />
+                  <div className="skeleton h-5 w-4/5" />
+                  <div className="skeleton h-5 w-3/5" />
+                </div>
+              </div>
             ))}
           </div>
         </div>
-      </div>
+      </AppShell>
     );
   }
 
@@ -136,29 +138,8 @@ export default function DashboardPage() {
     .sort((a, b) => b[1] - a[1])[0];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Link href="/" className="text-teal-600 hover:text-teal-700">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
-              </svg>
-            </Link>
-            <h1 className="text-lg font-bold text-gray-800">Health Dashboard</h1>
-          </div>
-          <div className="flex gap-2">
-            <Link href="/history" className="text-xs text-gray-500 hover:text-teal-600 px-3 py-1.5 rounded-lg border border-gray-200 hover:border-teal-200 transition-colors">
-              History
-            </Link>
-            <Link href="/reports" className="text-xs text-gray-500 hover:text-teal-600 px-3 py-1.5 rounded-lg border border-gray-200 hover:border-teal-200 transition-colors">
-              Reports
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+    <AppShell title="Health Dashboard">
+      <div className="space-y-6">
         {data.total === 0 ? (
           <div className="text-center py-16 space-y-3">
             <p className="text-gray-400">No triage data yet</p>
@@ -197,7 +178,7 @@ export default function DashboardPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Severity Distribution */}
-              <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+              <div className="card-clinical p-5">
                 <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
                   Severity Breakdown
                 </h2>
@@ -224,7 +205,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Common Symptoms */}
-              <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+              <div className="card-clinical p-5">
                 <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
                   Common Symptoms
                 </h2>
@@ -248,7 +229,7 @@ export default function DashboardPage() {
 
             {/* Timeline */}
             {data.timeline.length > 0 && (
-              <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+              <div className="card-clinical p-5">
                 <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
                   Activity Timeline
                 </h2>
@@ -291,6 +272,6 @@ export default function DashboardPage() {
           Your health data is private and visible only to you.
         </p>
       </div>
-    </div>
+    </AppShell>
   );
 }

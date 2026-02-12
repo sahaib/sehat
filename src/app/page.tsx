@@ -29,6 +29,7 @@ import ProfileForm from '@/components/ProfileForm';
 import FileUpload from '@/components/FileUpload';
 import DisclaimerFooter from '@/components/DisclaimerFooter';
 import ReadAloudButton from '@/components/ReadAloudButton';
+import SehatOrb from '@/components/SehatOrb';
 import { prewarmTTS } from '@/lib/tts-client';
 import { startCalmAudio, stopCalmAudio } from '@/lib/calm-audio';
 import Link from 'next/link';
@@ -598,16 +599,7 @@ function Home() {
       <header className="flex-shrink-0 px-4 pt-4 pb-2 no-print glass-header z-10 relative">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-500 to-teal-700 flex items-center justify-center shadow-lg shadow-teal-300/30 transition-transform duration-300 hover:scale-110">
-              <svg
-                className="w-6 h-6 text-white"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
-              </svg>
-            </div>
+            <SehatOrb size="sm" />
             <div>
               <h1 className="text-xl font-bold bg-gradient-to-r from-teal-700 to-teal-500 bg-clip-text text-transparent">Sehat</h1>
               <p className="text-xs text-gray-400">AI Medical Triage</p>
@@ -717,24 +709,22 @@ function Home() {
       >
         {/* Welcome state */}
         {!hasConversation && (
-          <div className="flex flex-col items-center justify-center h-full text-center space-y-4 py-12 animate-fade-in">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-teal-100 to-teal-200/60 flex items-center justify-center animate-float welcome-pulse">
-              <svg
-                className="w-10 h-10 text-teal-600"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-700">
+          <div className="flex flex-col items-center justify-center h-full text-center space-y-5 py-12 animate-fade-in">
+            {/* Large ambient orb */}
+            <SehatOrb size="lg" />
+            <h2 className="text-3xl font-bold text-gray-800">
               {userName
                 ? `${WELCOME_GREETINGS[state.language].split('!')[0]}, ${userName}!`
                 : WELCOME_GREETINGS[state.language]}
             </h2>
-            <p className="text-gray-400 max-w-sm text-base">
+            <p className="text-gray-500 max-w-sm text-base leading-relaxed">
               {WELCOME_SUBTITLES[state.language]}
+            </p>
+            <p className="flex items-center gap-1.5 text-sm text-teal-600/70">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+              </svg>
+              Tap the mic or type below
             </p>
           </div>
         )}
@@ -765,14 +755,15 @@ function Home() {
           />
         )}
 
-        {/* Loading indicator */}
+        {/* Loading skeleton */}
         {state.isStreaming &&
           !state.isThinking &&
           !state.thinkingContent && (
-            <div className="flex items-center gap-2 text-teal-600 animate-fade-in-up">
-              <div className="shimmer-bg rounded-2xl p-4 w-3/4 backdrop-blur-sm">
-                <div className="h-4 bg-teal-100/40 rounded-full mb-2 w-full" />
-                <div className="h-4 bg-teal-100/40 rounded-full w-2/3" />
+            <div className="flex justify-start animate-fade-in-up">
+              <div className="chat-bubble chat-bubble-assistant w-3/4 space-y-2.5">
+                <div className="skeleton h-4 w-full" />
+                <div className="skeleton h-4 w-5/6" />
+                <div className="skeleton h-4 w-2/3" />
               </div>
             </div>
           )}
@@ -886,8 +877,12 @@ function Home() {
                     aria-label="Start voice conversation"
                     title="Voice conversation mode"
                   >
-                    <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                    <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                      <line x1="4" y1="10" x2="4" y2="14" />
+                      <line x1="8" y1="7" x2="8" y2="17" />
+                      <line x1="12" y1="4" x2="12" y2="20" />
+                      <line x1="16" y1="7" x2="16" y2="17" />
+                      <line x1="20" y1="10" x2="20" y2="14" />
                     </svg>
                   </button>
                 </>

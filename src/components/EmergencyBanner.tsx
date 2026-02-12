@@ -27,7 +27,7 @@ export default function EmergencyBanner({ detection }: EmergencyBannerProps) {
   return (
     <div
       ref={dialogRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-emergency-600/95 animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-emergency-600/95 animate-fade-in emergency-shake"
       role="alertdialog"
       aria-modal="true"
       aria-label="Emergency detected"
@@ -60,7 +60,7 @@ export default function EmergencyBanner({ detection }: EmergencyBannerProps) {
         <a
           href={`tel:${EMERGENCY_NUMBERS.unified}`}
           className="block w-full py-5 bg-white text-emergency-600 text-2xl font-bold
-                     rounded-2xl shadow-lg active:scale-95 transition-transform"
+                     rounded-2xl shadow-lg active:scale-95 transition-transform ring-4 ring-white/30"
         >
           Call {EMERGENCY_NUMBERS.unified} Now
         </a>

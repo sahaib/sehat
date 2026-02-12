@@ -55,7 +55,7 @@ export default function TextInput({
   return (
     <div
       className={`flex items-end gap-2 rounded-2xl transition-all duration-300 glass-input
-                  ${disabled ? 'opacity-50' : 'focus-within:border-teal-400/60 focus-within:ring-2 focus-within:ring-teal-100/50 focus-within:shadow-lg focus-within:shadow-teal-100/20'}`}
+                  ${disabled ? 'opacity-50' : 'focus-within:input-active-glow'}`}
     >
       {/* Textarea — borderless, fills the space */}
       <textarea
