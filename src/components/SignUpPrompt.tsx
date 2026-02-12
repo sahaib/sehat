@@ -67,6 +67,11 @@ export default function SignUpPrompt({ language, onProfileClick }: SignUpPromptP
 
   if (dismissed) return null;
 
+  // If user already has a profile name saved, they don't need this prompt
+  if (typeof window !== 'undefined' && localStorage.getItem('sehat_user_name')) {
+    return null;
+  }
+
   const t = PROMPT_TEXT[language];
 
   return (

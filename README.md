@@ -32,11 +32,13 @@
 - **7 Indian Languages** with Hinglish/code-mixing support
 - **Voice Conversation Mode**: Continuous hands-free loop (speak → triage → TTS → auto-listen)
 - **Sarvam AI** for Indian-language STT (Saarika v2.5) and TTS (Bulbul v3 via WebSocket streaming)
-- **Zero-Latency Emergency Detection**: Multilingual keyword matching catches life-threatening emergencies in <50ms — before the AI even processes
+- **Zero-Latency Emergency Detection**: 200+ multilingual keywords catch life-threatening emergencies in <50ms — including anaphylaxis, diabetic emergencies, dengue warning signs, burns, road accidents
 - **Transparent AI Reasoning**: Watch Opus 4.6's extended thinking chain stream in real-time with step detection
-- **Printable Doctor Card**: Bilingual summary with reference ID, timestamp, and disclaimers
-- **Dangerous Home Remedy Warnings**: Culturally specific (toothpaste on burns, tourniquets for snake bites, etc.)
+- **Exportable Doctor Card**: Bilingual PDF with severity, symptoms, clinical summary, first aid, warnings — with language selector (English/Local/Bilingual)
+- **Dangerous Home Remedy Warnings**: Culturally specific (toothpaste on burns, tourniquets for snake bites, gripe water for diarrhea, spoons in mouth during seizures, etc.)
 - **WORST-FIRST Triage Principle**: When uncertain, classify at higher severity (mirrors ESI/MTS clinical frameworks)
+- **Clinical Red Flags**: Sepsis, diabetic emergencies, anaphylaxis, tropical diseases (dengue/malaria/leptospirosis), environmental hazards (heat stroke, pesticide exposure), neonatal/pediatric specific flags
+- **Calm Audio**: Ambient sound during AI thinking phase to make the wait feel intentional
 
 ### Period Health Companion (NEW)
 AI-powered menstrual health tracker for rural Indian women:
@@ -48,10 +50,17 @@ AI-powered menstrual health tracker for rural Indian women:
 - Breaks the taboo: educates women who may be learning about menstruation for the first time
 
 ### Data & Analytics
-- **Chat History**: Browse and replay past triage sessions
-- **Medical Reports**: All triage reports and document analyses in one view
+- **Chat History**: Browse and replay past triage sessions with full thinking chain
+- **Medical Reports**: Collapsible report cards with severity filtering, Export PDF per report, copy to clipboard
 - **Health Dashboard**: Personal health trends, severity breakdown, symptom frequency, timeline
+- **Document Analysis**: Upload lab reports/prescriptions — Claude explains them in simple language
 - **Admin Telemetry**: Supabase-backed persistent metrics with admin gate
+
+### Security
+- **Prompt injection defense**: Input validation, system prompt hardening, user message delimiters, output schema validation
+- **Rate limiting**: Per-IP limits on triage (20/min), transcribe (30/min), TTS (50/min)
+- **Input sanitization**: Control character stripping, max length enforcement, injection pattern detection
+- **Emoji stripping**: All patient-facing output cleaned for TTS compatibility
 
 ---
 
@@ -175,11 +184,15 @@ Open [http://localhost:3000](http://localhost:3000).
 - Selected from 13,000+ applicants (500 participants)
 
 ### How Opus 4.6 is Used
-- **Extended thinking** (10K token budget) for structured clinical reasoning visible to users
-- **Multilingual code-switching** — handles Hinglish, Tanglish naturally
-- **WORST-FIRST reasoning** — considers worst-case scenario first, then works down
-- **Cultural sensitivity** — appropriate address forms, Indian healthcare system mapping
+- **Extended thinking** (10K token budget for text, 2K for voice) for structured 8-step clinical reasoning visible to users
+- **Multilingual code-switching** — handles Hinglish, Tanglish naturally across 7 languages
+- **WORST-FIRST reasoning** — considers worst-case scenario first, then works down (mirrors ESI/MTS)
+- **Cultural sensitivity** — appropriate address forms, Indian healthcare system mapping, home remedy warnings
+- **Document analysis** — explains lab reports and prescriptions in simple language
 - **Period health AI** — menstrual health education in 7 Indian languages
+- **6 iterations of prompt refinement** — from 200 words to 4,200 words of clinical reasoning framework
+
+See [docs/ITERATION_LOG.md](docs/ITERATION_LOG.md) for the full evolution from v0.1 to v0.6.
 
 ---
 

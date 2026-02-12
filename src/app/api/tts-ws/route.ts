@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import WebSocket from 'ws';
 import { telemetry } from '@/lib/telemetry';
+import { rateLimit, getClientIP } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,13 @@ const SARVAM_WS_URL = 'wss://api.sarvam.ai/text-to-speech/ws';
  */
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
+
+  // Rate limit: 50 TTS requests per IP per minute
+  const ip = getClientIP(request);
+  const { allowed } = rateLimit(`tts:${ip}`, 50);
+  if (!allowed) {
+    return Response.json({ error: 'Too many requests.' }, { status: 429 });
+  }
 
   try {
     const { text, language_code } = await request.json();

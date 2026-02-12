@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { TranscribeResponse } from '@/types';
 import { telemetry } from '@/lib/telemetry';
+import { rateLimit, getClientIP } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -9,6 +10,13 @@ const SARVAM_STT_URL = 'https://api.sarvam.ai/speech-to-text';
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
+
+  // Rate limit: 30 transcribe requests per IP per minute
+  const ip = getClientIP(request);
+  const { allowed } = rateLimit(`transcribe:${ip}`, 30);
+  if (!allowed) {
+    return Response.json({ error: 'Too many requests. Please wait.' }, { status: 429 });
+  }
 
   try {
     const formData = await request.formData();

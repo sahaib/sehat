@@ -5,6 +5,7 @@ import { TriageRequest, StreamEvent } from '@/types';
 import { telemetry, InputMode, TriageEvent } from '@/lib/telemetry';
 import { saveTriageSession, saveConversationMessage, saveTriageResult } from '@/lib/db';
 import { validateLanguage, sanitizeMessage, sanitizeConversationHistory } from '@/lib/input-guard';
+import { rateLimit, getClientIP } from '@/lib/rate-limit';
 
 async function getClerkUserId(): Promise<string | null> {
   try {
@@ -22,6 +23,13 @@ export const maxDuration = 120;
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
+
+  // Rate limit: 20 triage requests per IP per minute
+  const ip = getClientIP(request);
+  const { allowed } = rateLimit(`triage:${ip}`, 20);
+  if (!allowed) {
+    return Response.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
+  }
 
   try {
     const body: TriageRequest = await request.json();
