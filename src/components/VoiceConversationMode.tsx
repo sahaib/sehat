@@ -5,6 +5,7 @@ import { Language } from '@/types';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { SUPPORTED_LANGUAGES } from '@/lib/constants';
 import { streamTTS, TTSPlaybackController } from '@/lib/tts-client';
+import { startCalmAudio, stopCalmAudio } from '@/lib/calm-audio';
 
 type VoicePhase = 'idle' | 'listening' | 'transcribing' | 'thinking' | 'speaking';
 
@@ -43,6 +44,9 @@ interface VoiceConversationModeProps {
   isProcessing: boolean;
 }
 
+// Safety timeout: if stuck in thinking/transcribing for >60s, reset to idle
+const STUCK_TIMEOUT = 60000;
+
 export default function VoiceConversationMode({
   language,
   onTranscript,
@@ -54,6 +58,39 @@ export default function VoiceConversationMode({
   const ttsControllerRef = useRef<TTSPlaybackController | null>(null);
   const lastSpokenRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
+  const stuckTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Play calm ambient audio during thinking/transcribing phases
+  useEffect(() => {
+    if (phase === 'thinking' || phase === 'transcribing') {
+      startCalmAudio();
+    } else {
+      stopCalmAudio();
+    }
+    return () => { stopCalmAudio(); };
+  }, [phase]);
+
+  // Safety: reset stuck phases after timeout
+  useEffect(() => {
+    if (stuckTimerRef.current) {
+      clearTimeout(stuckTimerRef.current);
+      stuckTimerRef.current = null;
+    }
+    if (phase === 'thinking' || phase === 'transcribing') {
+      stuckTimerRef.current = setTimeout(() => {
+        if (mountedRef.current) {
+          console.warn('[VoiceMode] Stuck in', phase, '— resetting to idle');
+          setPhase('idle');
+        }
+      }, STUCK_TIMEOUT);
+    }
+    return () => {
+      if (stuckTimerRef.current) {
+        clearTimeout(stuckTimerRef.current);
+        stuckTimerRef.current = null;
+      }
+    };
+  }, [phase]);
 
   const handleAudioReady = useCallback(
     async (blob: Blob) => {
@@ -71,10 +108,20 @@ export default function VoiceConversationMode({
           setPhase('thinking');
           onTranscript(data.text);
         } else if (mountedRef.current) {
+          // Empty transcript — go back to listening automatically
           setPhase('idle');
+          setTimeout(() => {
+            if (mountedRef.current) startListeningRef.current();
+          }, 300);
         }
       } catch {
-        if (mountedRef.current) setPhase('idle');
+        if (mountedRef.current) {
+          setPhase('idle');
+          // Auto-retry listening on transcription error
+          setTimeout(() => {
+            if (mountedRef.current) startListeningRef.current();
+          }, 300);
+        }
       }
     },
     [language, onTranscript]
@@ -82,16 +129,31 @@ export default function VoiceConversationMode({
 
   const { isRecording, startRecording, stopRecording } = useVoiceRecorder(handleAudioReady);
 
-  const startListening = useCallback(() => {
+  const startListening = useCallback(async () => {
     setPhase('listening');
-    startRecording();
+    try {
+      await startRecording();
+    } catch {
+      // Mic access failed — fall back to idle so user can retry
+      if (mountedRef.current) setPhase('idle');
+    }
   }, [startRecording]);
 
+  // Keep a stable ref so callbacks don't go stale
+  const startListeningRef = useRef(startListening);
+  startListeningRef.current = startListening;
+
+  // Sync phase with parent processing state
   useEffect(() => {
     if (isProcessing && phase !== 'speaking') {
       setPhase('thinking');
     }
-  }, [isProcessing, phase]);
+    // When processing finishes and we're still in thinking, something completed
+    // without triggering TTS — reset to idle
+    if (!isProcessing && phase === 'thinking' && !textToSpeak) {
+      setPhase('idle');
+    }
+  }, [isProcessing, phase, textToSpeak]);
 
   useEffect(() => {
     if (!textToSpeak || textToSpeak === lastSpokenRef.current) return;
@@ -121,7 +183,7 @@ export default function VoiceConversationMode({
           setPhase('idle');
           // Auto-listen after speaking
           setTimeout(() => {
-            if (mountedRef.current) startListening();
+            if (mountedRef.current) startListeningRef.current();
           }, 400);
         }
       },
@@ -131,7 +193,7 @@ export default function VoiceConversationMode({
           setPhase('idle');
           // Auto-listen on TTS error too so voice loop doesn't break
           setTimeout(() => {
-            if (mountedRef.current) startListening();
+            if (mountedRef.current) startListeningRef.current();
           }, 400);
         }
       },
@@ -139,12 +201,12 @@ export default function VoiceConversationMode({
 
     ttsControllerRef.current = controller;
     setPhase('speaking');
-  }, [textToSpeak, language, startListening]);
+  }, [textToSpeak, language]);
 
   useEffect(() => {
     mountedRef.current = true;
     const t = setTimeout(() => {
-      if (mountedRef.current) startListening();
+      if (mountedRef.current) startListeningRef.current();
     }, 300);
     return () => {
       mountedRef.current = false;
@@ -159,6 +221,7 @@ export default function VoiceConversationMode({
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleMicTap = () => {
+    // Interrupt TTS to start listening
     if (phase === 'speaking' && ttsControllerRef.current) {
       ttsControllerRef.current.stop();
       ttsControllerRef.current = null;
@@ -167,7 +230,8 @@ export default function VoiceConversationMode({
     }
     if (isRecording) {
       stopRecording();
-    } else if (phase === 'idle') {
+    } else {
+      // Allow restarting from ANY non-recording state (idle, listening with failed mic, etc.)
       startListening();
     }
   };
@@ -239,10 +303,9 @@ export default function VoiceConversationMode({
                  style={{ background: 'radial-gradient(circle, rgba(147,51,234,0.25) 0%, transparent 70%)' }} />
           )}
 
-          {/* Main button */}
+          {/* Main button — NEVER fully disabled, always tappable for recovery */}
           <button
             onClick={handleMicTap}
-            disabled={phase === 'transcribing' || phase === 'thinking'}
             className={`relative z-10 w-16 h-16 rounded-full flex items-center justify-center
                        transition-all duration-500 active:scale-90
                        ${phase === 'listening'

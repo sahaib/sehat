@@ -29,6 +29,7 @@ import FileUpload from '@/components/FileUpload';
 import DisclaimerFooter from '@/components/DisclaimerFooter';
 import ReadAloudButton from '@/components/ReadAloudButton';
 import { prewarmTTS } from '@/lib/tts-client';
+import { startCalmAudio, stopCalmAudio } from '@/lib/calm-audio';
 import Link from 'next/link';
 
 function generateId(): string {
@@ -479,6 +480,15 @@ function Home() {
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const voiceTextRef = useRef<string | null>(null);
 
+  // Play calm ambient audio during thinking (text mode only — voice mode handles its own)
+  useEffect(() => {
+    if (state.isThinking && !isVoiceMode) {
+      startCalmAudio();
+    } else if (!state.isThinking) {
+      stopCalmAudio();
+    }
+  }, [state.isThinking, isVoiceMode]);
+
   // TTS pre-warm is fired inline during SSE stream processing (in handleSubmit)
   // when the 'result' event arrives — this overlaps TTS synthesis with the
   // remaining stream. No separate useEffect needed for the main prewarm.
@@ -754,6 +764,8 @@ function Home() {
                 summary={state.currentResult.action_plan.tell_doctor}
                 severity={state.currentResult.severity}
                 symptoms={state.currentResult.symptoms_identified}
+                result={state.currentResult}
+                language={state.language}
               />
 
               {/* File upload for medical reports — only after results */}

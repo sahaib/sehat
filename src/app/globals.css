@@ -406,37 +406,10 @@
 }
 
 /* ─── Print styles ────────────────────────────── */
+/* PDF export now uses a separate clean window (see DoctorSummary.tsx).
+   These rules are minimal fallbacks for any direct window.print() usage. */
 @media print {
-  body * {
-    visibility: hidden;
-  }
-  .doctor-summary,
-  .doctor-summary * {
-    visibility: visible;
-  }
-  .doctor-summary {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    padding: 1.5rem;
-    border: none !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    font-size: 12pt;
-  }
-  .doctor-summary .bg-gray-50 {
-    background: #f9fafb !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
   .no-print {
     display: none !important;
-  }
-  .print\:hidden {
-    display: none !important;
-  }
-  .print\:block {
-    display: block !important;
   }
 }

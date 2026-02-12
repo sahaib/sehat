@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { buildSystemPrompt, getLanguageLabel } from './prompts';
 import { Language, Message, StreamEvent, TriageResult } from '@/types';
-import { MODEL_ID, THINKING_BUDGET } from './constants';
+import { MODEL_ID, THINKING_BUDGET, VOICE_THINKING_BUDGET } from './constants';
 import { sanitizeMessage, sanitizeConversationHistory } from './input-guard';
 
 const client = new Anthropic();
@@ -22,7 +22,8 @@ function isRetryableError(error: unknown): boolean {
 export async function* streamTriage(
   userMessage: string,
   language: Language,
-  conversationHistory: Message[]
+  conversationHistory: Message[],
+  inputMode?: 'text' | 'voice' | 'voice_conversation'
 ): AsyncGenerator<StreamEvent> {
   const languageLabel = getLanguageLabel(language);
 
@@ -53,12 +54,20 @@ export async function* streamTriage(
   let lastError: unknown = null;
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
+      // Voice mode uses a smaller thinking budget for faster responses
+      // while maintaining the same Opus 4.6 reasoning quality
+      const thinkingBudget = inputMode === 'voice' || inputMode === 'voice_conversation'
+        ? VOICE_THINKING_BUDGET
+        : THINKING_BUDGET;
+
+      console.log(`[triage-agent] inputMode=${inputMode}, thinkingBudget=${thinkingBudget}`);
+
       const stream = client.messages.stream({
         model: MODEL_ID,
         max_tokens: 16000,
         thinking: {
           type: 'enabled',
-          budget_tokens: THINKING_BUDGET,
+          budget_tokens: thinkingBudget,
         },
         system: buildSystemPrompt(language, languageLabel),
         messages,
@@ -161,6 +170,24 @@ function parseTriageResult(text: string): TriageResult | null {
   return validateTriageResult(parsed as Record<string, unknown>);
 }
 
+/** Strip emojis and decorative Unicode from patient-facing strings */
+function stripEmojis(str: string): string {
+  return str
+    .replace(/[\u{1F300}-\u{1FAFF}]/gu, '')
+    .replace(/[\u{2600}-\u{27BF}]/gu, '')
+    .replace(/[\u{2460}-\u{24FF}]/gu, '')
+    .replace(/[\u{FE00}-\u{FE0F}\u{200D}\u{20E3}]/gu, '')
+    .replace(/[\u{E0020}-\u{E007F}]/gu, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+/** Insert line breaks before inline numbered items (e.g. "... 2. Foo 3. Bar" → newlines) */
+function formatNumberedItems(str: string): string {
+  // Add newline before "2.", "3.", etc. when preceded by non-newline text
+  return str.replace(/(?<!\n)\s+(\d+)\.\s/g, '\n$1. ');
+}
+
 const VALID_SEVERITIES = new Set(['emergency', 'urgent', 'routine', 'self_care']);
 const VALID_CARE_LEVELS = new Set(['home', 'phc', 'district_hospital', 'emergency']);
 const VALID_URGENCIES = new Set([
@@ -196,29 +223,35 @@ function validateTriageResult(data: Record<string, unknown>): TriageResult {
     ? actionPlan.tell_doctor as Record<string, unknown>
     : {};
 
+  // Strip emojis and format numbered items in patient-facing strings
+  const clean = (v: unknown, fallback: string = '') =>
+    typeof v === 'string' ? formatNumberedItems(stripEmojis(v)) || fallback : fallback;
+  const cleanArr = (v: unknown) =>
+    Array.isArray(v) ? v.filter((s): s is string => typeof s === 'string').map((s) => stripEmojis(s)) : [];
+
   return {
     is_medical_query: data.is_medical_query !== false,
-    redirect_message: typeof data.redirect_message === 'string' ? data.redirect_message : null,
+    redirect_message: typeof data.redirect_message === 'string' ? stripEmojis(data.redirect_message) : null,
     severity: severity as TriageResult['severity'],
     confidence,
-    reasoning_summary: typeof data.reasoning_summary === 'string' ? data.reasoning_summary : 'Triage completed.',
-    symptoms_identified: Array.isArray(data.symptoms_identified) ? data.symptoms_identified.filter((s): s is string => typeof s === 'string') : [],
-    red_flags: Array.isArray(data.red_flags) ? data.red_flags.filter((s): s is string => typeof s === 'string') : [],
-    risk_factors: Array.isArray(data.risk_factors) ? data.risk_factors.filter((s): s is string => typeof s === 'string') : [],
+    reasoning_summary: clean(data.reasoning_summary, 'Triage completed.'),
+    symptoms_identified: cleanArr(data.symptoms_identified),
+    red_flags: cleanArr(data.red_flags),
+    risk_factors: cleanArr(data.risk_factors),
     needs_follow_up: typeof data.needs_follow_up === 'boolean' ? data.needs_follow_up : false,
-    follow_up_question: typeof data.follow_up_question === 'string' ? data.follow_up_question : null,
+    follow_up_question: typeof data.follow_up_question === 'string' ? stripEmojis(data.follow_up_question) : null,
     action_plan: {
-      go_to: typeof actionPlan.go_to === 'string' ? actionPlan.go_to : 'Please visit your nearest healthcare facility.',
+      go_to: clean(actionPlan.go_to, 'Please visit your nearest healthcare facility.'),
       care_level: careLevel as TriageResult['action_plan']['care_level'],
       urgency: urgency as TriageResult['action_plan']['urgency'],
       tell_doctor: {
-        english: typeof tellDoctor.english === 'string' ? tellDoctor.english : 'Patient used AI triage. Please evaluate.',
-        local: typeof tellDoctor.local === 'string' ? tellDoctor.local : '',
+        english: clean(tellDoctor.english, 'Patient used AI triage. Please evaluate.'),
+        local: clean(tellDoctor.local),
       },
-      do_not: Array.isArray(actionPlan.do_not) ? actionPlan.do_not.filter((s): s is string => typeof s === 'string') : [],
-      first_aid: Array.isArray(actionPlan.first_aid) ? actionPlan.first_aid.filter((s): s is string => typeof s === 'string') : [],
+      do_not: cleanArr(actionPlan.do_not),
+      first_aid: cleanArr(actionPlan.first_aid),
       emergency_numbers: Array.isArray(actionPlan.emergency_numbers) ? actionPlan.emergency_numbers.filter((s): s is string => typeof s === 'string') : [],
     },
-    disclaimer: typeof data.disclaimer === 'string' ? data.disclaimer : 'This is AI-assisted triage guidance, not a medical diagnosis. Always consult a qualified healthcare provider. In emergency, call 112.',
+    disclaimer: clean(data.disclaimer, 'This is AI-assisted triage guidance, not a medical diagnosis. Always consult a qualified healthcare provider. In emergency, call 112.'),
   };
 }

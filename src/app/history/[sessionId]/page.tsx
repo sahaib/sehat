@@ -196,6 +196,8 @@ export default function SessionDetailPage() {
                     summary={result.action_plan.tell_doctor}
                     severity={result.severity}
                     symptoms={result.symptoms_identified}
+                    result={result}
+                    language={language}
                   />
                 )}
               </>

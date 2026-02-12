@@ -34,6 +34,16 @@ function stripMarkdown(text: string): string {
     .replace(/\*(.+?)\*/g, '$1')
     .replace(/^[-*]\s+/gm, '')
     .replace(/^\d+\.\s+/gm, '')
+    // Strip emojis and special Unicode symbols that TTS can't read
+    .replace(/[\u{1F300}-\u{1FAFF}]/gu, '')       // emoticons, symbols, dingbats
+    .replace(/[\u{2600}-\u{27BF}]/gu, '')          // misc symbols, arrows
+    .replace(/[\u{2460}-\u{24FF}]/gu, '')          // enclosed alphanumerics (①②③)
+    .replace(/[\u{2700}-\u{27BF}]/gu, '')          // dingbats
+    .replace(/[\u{FE00}-\u{FE0F}]/gu, '')          // variation selectors
+    .replace(/[\u{200D}]/gu, '')                    // zero-width joiner
+    .replace(/[\u{20E3}]/gu, '')                    // combining enclosing keycap
+    .replace(/[\u{E0020}-\u{E007F}]/gu, '')        // tags
+    .replace(/\s{2,}/g, ' ')                        // collapse multiple spaces
     .trim();
 }
 
@@ -231,6 +241,27 @@ export function streamTTS(options: StreamTTSOptions): TTSPlaybackController {
 
   const run = async () => {
     try {
+      // If a pre-warm is in-flight for this exact text, wait for it
+      // instead of making a duplicate network request
+      const pendingPrewarm = prewarmCache.get(key);
+      if (pendingPrewarm) {
+        await pendingPrewarm;
+        // After pre-warm completes, audio should be in cache
+        const prewarmed = audioCache.get(key);
+        if (prewarmed && !stopped) {
+          const { audio, done } = playBlob(prewarmed, onStart, () => {
+            playing = false;
+            currentAudio = null;
+            onEnd?.();
+            resolveController?.();
+          });
+          currentAudio = audio;
+          playing = true;
+          await done;
+          return;
+        }
+      }
+
       const blob = await fetchAudioBlob(text, languageCode, abortController.signal);
 
       if (stopped || !blob) {

@@ -96,7 +96,8 @@ export async function POST(request: NextRequest) {
           for await (const event of streamTriage(
             sanitizedMessage,
             language,
-            sanitizedHistory
+            sanitizedHistory,
+            (inputMode as 'text' | 'voice' | 'voice_conversation') || 'text'
           )) {
             send(event);
 
