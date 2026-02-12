@@ -1,0 +1,29 @@
+{
+  "name": "Sehat - AI Medical Triage",
+  "short_name": "Sehat",
+  "description": "Voice-first multilingual medical triage for India. Powered by Claude Opus 4.6.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0D9488",
+  "categories": ["health", "medical"],
+  "lang": "en-IN",
+  "icons": [
+    {
+      "src": "/icon-192",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
