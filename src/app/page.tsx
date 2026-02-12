@@ -426,33 +426,19 @@ function Home() {
                   }
                   dispatch({ type: 'STREAM_RESULT', data: event.data });
 
-                  // Fire TTS pre-warm for the ONE text that voice mode will actually speak.
-                  // This avoids 4-5 parallel TTS calls that waste Sarvam API quota.
-                  const langCfg = SUPPORTED_LANGUAGES.find((l) => l.code === state.language);
-                  const spCode = langCfg?.speechCode || 'en-IN';
-                  if (event.data.is_medical_query === false) {
-                    if (event.data.redirect_message) {
-                      prewarmTTS(event.data.redirect_message, spCode);
-                    }
-                  } else if (event.data.needs_follow_up && event.data.follow_up_question) {
-                    // Voice mode will speak the follow-up question
-                    prewarmTTS(event.data.follow_up_question, spCode);
-                  } else if (event.data.reasoning_summary) {
-                    // Voice mode will speak the reasoning summary for final results
-                    prewarmTTS(event.data.reasoning_summary, spCode);
-                  }
+                  // TTS pre-warm is handled by the voiceTextToSpeak useEffect,
+                  // which ensures the pre-warmed text exactly matches what will be spoken
+                  // (including truncation). Prewarming here caused duplicate TTS requests
+                  // when text didn't match exactly.
                   break;
                 }
                 case 'follow_up':
                   break;
-                case 'early_tts': {
-                  // Start TTS synthesis immediately — reasoning_summary extracted
-                  // from streaming JSON before full result arrives (saves 1-2s)
-                  const earlyLangCfg = SUPPORTED_LANGUAGES.find((l) => l.code === state.language);
-                  const earlySpCode = earlyLangCfg?.speechCode || 'en-IN';
-                  prewarmTTS(event.content, earlySpCode);
+                case 'early_tts':
+                  // Ignored — early_tts text can differ slightly from final parsed result
+                  // (due to clean() in parseTriageResult), causing cache key mismatch and
+                  // duplicate TTS requests. The result-event prewarm is sufficient.
                   break;
-                }
                 case 'tool_call':
                   dispatch({
                     type: 'STREAM_TOOL_CALL',
@@ -551,26 +537,40 @@ function Home() {
       state.followUpCount >= MAX_FOLLOW_UPS);
   const isInputDisabled = state.isStreaming || state.isThinking;
 
-  // Derive text to auto-speak in voice mode
-  // Note: we check currentResult directly (not isStreaming) so voice can start
-  // as soon as the result event arrives — TTS is already pre-warmed by then
+  // Derive text to auto-speak in voice mode.
+  // IMPORTANT: Keep it SHORT — voice should give a concise summary, not read a report.
+  // Max ~300 chars, truncated at sentence boundary.
   const voiceTextToSpeak = useMemo(() => {
     if (!isVoiceMode || state.isThinking) return null;
 
+    const truncateForVoice = (text: string, maxLen = 300): string => {
+      if (text.length <= maxLen) return text;
+      // Find last sentence boundary before maxLen
+      const truncated = text.slice(0, maxLen);
+      const lastSentence = truncated.lastIndexOf('।') !== -1
+        ? truncated.lastIndexOf('।')
+        : truncated.lastIndexOf('. ') !== -1
+          ? truncated.lastIndexOf('. ')
+          : truncated.lastIndexOf('.');
+      if (lastSentence > maxLen * 0.4) {
+        return text.slice(0, lastSentence + 1).trim();
+      }
+      return truncated.trim() + '...';
+    };
+
     // Non-medical redirect
     if (state.currentResult?.is_medical_query === false) {
-      return state.currentResult.redirect_message || null;
+      return state.currentResult.redirect_message ? truncateForVoice(state.currentResult.redirect_message) : null;
     }
 
-    // Follow-up question — check result.follow_up_question FIRST (most reliable),
-    // then fall back to last assistant message
+    // Follow-up question
     if (state.currentResult?.needs_follow_up && state.currentResult.follow_up_question && state.followUpCount < MAX_FOLLOW_UPS) {
-      return state.currentResult.follow_up_question;
+      return truncateForVoice(state.currentResult.follow_up_question);
     }
 
-    // Final result — speak reasoning summary
+    // Final result — speak ONLY the reasoning summary, capped for voice
     if (state.currentResult && (!state.currentResult.needs_follow_up || state.followUpCount >= MAX_FOLLOW_UPS)) {
-      return state.currentResult.reasoning_summary;
+      return state.currentResult.reasoning_summary ? truncateForVoice(state.currentResult.reasoning_summary) : null;
     }
 
     return null;
