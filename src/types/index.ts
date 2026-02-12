@@ -1,5 +1,10 @@
 export type Language = 'hi' | 'ta' | 'te' | 'mr' | 'kn' | 'bn' | 'en';
 
+export interface FollowUpOption {
+  label: string;
+  value: string;
+}
+
 export type Severity = 'emergency' | 'urgent' | 'routine' | 'self_care';
 
 export type CareLevel = 'home' | 'phc' | 'district_hospital' | 'emergency';
@@ -13,6 +18,7 @@ export interface Message {
   timestamp: number;
   language?: Language;
   isFollowUp?: boolean;
+  followUpOptions?: FollowUpOption[] | null;
 }
 
 export interface DoctorSummary {
@@ -41,6 +47,7 @@ export interface TriageResult {
   risk_factors: string[];
   needs_follow_up: boolean;
   follow_up_question: string | null;
+  follow_up_options?: FollowUpOption[] | null;
   action_plan: ActionPlan;
   disclaimer: string;
 }
@@ -69,10 +76,19 @@ export type StreamEvent =
   | { type: 'thinking'; content: string }
   | { type: 'thinking_done' }
   | { type: 'result'; data: TriageResult }
-  | { type: 'follow_up'; question: string }
+  | { type: 'follow_up'; question: string; options?: FollowUpOption[] }
   | { type: 'text'; content: string }
   | { type: 'error'; message: string }
-  | { type: 'emergency'; data: EmergencyDetection };
+  | { type: 'emergency'; data: EmergencyDetection }
+  | { type: 'tool_call'; name: string; input: Record<string, unknown> }
+  | { type: 'tool_result'; name: string; result: Record<string, unknown> };
+
+export interface ToolStep {
+  name: string;
+  input: Record<string, unknown>;
+  result: Record<string, unknown> | null;
+  status: 'running' | 'done';
+}
 
 export interface ConversationState {
   sessionId: string;
@@ -86,6 +102,7 @@ export interface ConversationState {
   isEmergency: boolean;
   emergencyData: EmergencyDetection | null;
   error: string | null;
+  toolSteps: ToolStep[];
 }
 
 export type ConversationAction =
@@ -95,10 +112,12 @@ export type ConversationAction =
   | { type: 'STREAM_THINKING'; content: string }
   | { type: 'STREAM_THINKING_DONE' }
   | { type: 'STREAM_RESULT'; data: TriageResult }
-  | { type: 'STREAM_FOLLOW_UP'; question: string }
+  | { type: 'STREAM_FOLLOW_UP'; question: string; options?: FollowUpOption[] }
   | { type: 'STREAM_EMERGENCY'; data: EmergencyDetection }
   | { type: 'STREAM_ERROR'; message: string }
   | { type: 'STREAM_END' }
+  | { type: 'STREAM_TOOL_CALL'; name: string; input: Record<string, unknown> }
+  | { type: 'STREAM_TOOL_RESULT'; name: string; result: Record<string, unknown> }
   | { type: 'CLIENT_EMERGENCY'; detection: EmergencyDetection }
   | { type: 'RESTORE_SESSION'; sessionId: string; messages: Message[]; result: TriageResult | null; thinkingContent: string; language: Language }
   | { type: 'RESET' };

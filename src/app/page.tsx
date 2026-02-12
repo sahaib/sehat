@@ -70,6 +70,7 @@ const initialState: ConversationState = {
   isEmergency: false,
   emergencyData: null,
   error: null,
+  toolSteps: [],
 };
 
 function conversationReducer(
@@ -103,6 +104,7 @@ function conversationReducer(
         isThinking: false,
         thinkingContent: '',
         error: null,
+        toolSteps: [],
       };
 
     case 'STREAM_THINKING':
@@ -129,6 +131,7 @@ function conversationReducer(
         content: action.question,
         timestamp: Date.now(),
         isFollowUp: true,
+        followUpOptions: action.options || null,
       };
       return {
         ...state,
@@ -137,6 +140,22 @@ function conversationReducer(
         isStreaming: false,
       };
     }
+
+    case 'STREAM_TOOL_CALL':
+      return {
+        ...state,
+        toolSteps: [...state.toolSteps, { name: action.name, input: action.input, result: null, status: 'running' }],
+      };
+
+    case 'STREAM_TOOL_RESULT':
+      return {
+        ...state,
+        toolSteps: state.toolSteps.map((step) =>
+          step.name === action.name && step.status === 'running'
+            ? { ...step, result: action.result, status: 'done' as const }
+            : step
+        ),
+      };
 
     case 'STREAM_EMERGENCY':
       return {
@@ -391,6 +410,7 @@ function Home() {
                     dispatch({
                       type: 'STREAM_FOLLOW_UP',
                       question: event.data.follow_up_question,
+                      options: event.data.follow_up_options || undefined,
                     });
                   }
                   dispatch({ type: 'STREAM_RESULT', data: event.data });
@@ -413,6 +433,20 @@ function Home() {
                   break;
                 }
                 case 'follow_up':
+                  break;
+                case 'tool_call':
+                  dispatch({
+                    type: 'STREAM_TOOL_CALL',
+                    name: event.name,
+                    input: event.input,
+                  });
+                  break;
+                case 'tool_result':
+                  dispatch({
+                    type: 'STREAM_TOOL_RESULT',
+                    name: event.name,
+                    result: event.result,
+                  });
                   break;
                 case 'emergency':
                   dispatch({
@@ -715,13 +749,19 @@ function Home() {
         )}
 
         {/* Messages */}
-        <ConversationThread messages={state.messages} language={state.language} />
+        <ConversationThread
+          messages={state.messages}
+          language={state.language}
+          onOptionSelect={handleTextSubmit}
+          isInputDisabled={isInputDisabled}
+        />
 
         {/* Thinking Display */}
-        {(state.isThinking || state.thinkingContent) && (
+        {(state.isThinking || state.thinkingContent || state.toolSteps.length > 0) && (
           <ThinkingDisplay
             content={state.thinkingContent}
             isThinking={state.isThinking}
+            toolSteps={state.toolSteps}
           />
         )}
 

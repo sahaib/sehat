@@ -2,7 +2,7 @@
 
 **Builder:** Sahaib Singh Arora (solo)
 **Hackathon:** Built with Opus 4.6 — Claude Code Hackathon (Feb 10-16, 2026)
-**Total:** 38 commits, ~9,700 lines of TypeScript, 56 source files, 3 days of development
+**Total:** 39+ commits, ~10,200 lines of TypeScript, 57 source files, 3 days of development
 
 ---
 
@@ -149,6 +149,39 @@ Started with a single question: *What if 700 million Indians who lack nearby doc
 
 ---
 
+## v0.7 — Agentic Tools + Interactive Follow-ups (Feb 12)
+
+**What changed:**
+
+### Interactive Follow-up Options
+When Claude asks a follow-up question (e.g., "How long have you had these symptoms?"), the UI now shows **clickable pill buttons** with common answers — like Claude Code's AskUserQuestion interface. Users can click a pill or type a custom answer.
+
+- `FollowUpOption { label, value }` type added to `src/types/index.ts`
+- Claude generates 3-5 options in the user's language with each follow-up question
+- New `FollowUpOptions.tsx` component: teal-themed pill buttons with `active:scale-95` press feedback
+- Options rendered inline in `ConversationThread.tsx` after follow-up messages
+- Auto-disabled when already answered or during streaming
+- Clicking a pill calls `handleTextSubmit(value)` — reuses the exact same submission path as typed text, zero new logic needed
+
+**Why it matters:** Target users have low literacy and may struggle to type answers. Tapping a button is universal.
+
+### Action-Taking Tools (3 new write tools)
+The existing 10 agentic tools were read-only. Added 3 tools that **write data**, creating a "living" system where data from one triage session enriches future sessions:
+
+1. **`save_clinical_note`** — Saves chronic conditions, allergies, family history, medication interactions. `get_patient_history` now also retrieves these notes, closing the data loop.
+2. **`schedule_followup_check`** — Schedules follow-up reminders (e.g., "fever should resolve in 48h"). Writes to `followup_checks` table with computed `check_at` timestamp.
+3. **`update_risk_profile`** — Merges newly mentioned conditions/medications into the patient's stored profile. UPSERTs into `profiles.pre_existing_conditions`.
+
+**Design decisions:**
+- Action tools are **silent** — Claude never tells the patient it's saving data
+- **Fire-and-forget** — failures don't block triage (graceful for anonymous users, missing DB)
+- `ToolContext` now carries `sessionId` for linking notes to sessions
+- Prompt instructs Claude to call action tools in the same round as read tools when possible
+
+**Total tool count: 13** across 6 categories (Patient Context, Symptom Analysis, Specialist, Women's Health, Regional Intelligence, Actions).
+
+---
+
 ## Architecture Evolution
 
 ```
@@ -158,6 +191,7 @@ v0.3: Voice → Sarvam STT → Claude → JSON → Card + Sarvam TTS
 v0.4: Voice loop → Emergency bypass → Claude → TTS → Auto-listen
 v0.5: Full platform (history, reports, dashboard, period health, documents)
 v0.6: Security hardened, clinically audited, voice optimized
+v0.7: 13 agentic tools (read+write), interactive follow-up pills
 ```
 
 ## Prompt Evolution
@@ -172,6 +206,7 @@ The system prompt went through 6 major revisions:
 | v4 | ~3,000 words | Added dangerous home remedies, Step 0 query classification |
 | v5 | ~3,500 words | Added script-specific language anchoring, emoji ban |
 | v6 | ~4,200 words | Added sepsis, diabetic, tropical, environmental red flags, expanded thresholds |
+| v7 | ~4,800 words | Added follow_up_options schema, action tools section, tool call strategy |
 
 ## Key Metrics
 

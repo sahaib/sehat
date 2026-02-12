@@ -100,12 +100,14 @@ export async function POST(request: NextRequest) {
             is_follow_up: sanitizedHistory.length > 0,
           });
 
-          // Stream triage response from Claude
+          // Stream triage response from Claude (with tool use)
           for await (const event of streamTriage(
             sanitizedMessage,
             language,
             sanitizedHistory,
-            (inputMode as 'text' | 'voice' | 'voice_conversation') || 'text'
+            (inputMode as 'text' | 'voice' | 'voice_conversation') || 'text',
+            clerkUserId,
+            sessionId
           )) {
             send(event);
 

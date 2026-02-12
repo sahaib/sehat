@@ -4,15 +4,20 @@ import { Message, Language } from '@/types';
 import { SUPPORTED_LANGUAGES } from '@/lib/constants';
 import ReadAloudButton from './ReadAloudButton';
 import RenderMarkdown from './RenderMarkdown';
+import FollowUpOptions from './FollowUpOptions';
 
 interface ConversationThreadProps {
   messages: Message[];
   language: Language;
+  onOptionSelect?: (value: string) => void;
+  isInputDisabled?: boolean;
 }
 
 export default function ConversationThread({
   messages,
   language,
+  onOptionSelect,
+  isInputDisabled,
 }: ConversationThreadProps) {
   if (messages.length === 0) return null;
 
@@ -49,6 +54,19 @@ export default function ConversationThread({
               <div className="mt-2 pt-2 border-t border-gray-100">
                 <ReadAloudButton text={msg.content} languageCode={speechCode} size="sm" />
               </div>
+              {msg.isFollowUp && msg.followUpOptions && msg.followUpOptions.length > 0 && onOptionSelect && (
+                <FollowUpOptions
+                  options={msg.followUpOptions}
+                  onSelect={onOptionSelect}
+                  disabled={
+                    !!isInputDisabled ||
+                    // Disable if a user message already follows this follow-up
+                    messages.some(
+                      (m, mi) => m.role === 'user' && mi > messages.indexOf(msg)
+                    )
+                  }
+                />
+              )}
             </div>
           )}
         </div>
