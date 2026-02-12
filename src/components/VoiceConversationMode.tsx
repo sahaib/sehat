@@ -4,9 +4,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Language } from '@/types';
 import { useVoiceRecorder } from '@/hooks/useVoiceRecorder';
 import { SUPPORTED_LANGUAGES } from '@/lib/constants';
-import { streamTTS, TTSPlaybackController, prewarmTTS } from '@/lib/tts-client';
+import { streamTTS, TTSPlaybackController } from '@/lib/tts-client';
 import { startCalmAudio, stopCalmAudio } from '@/lib/calm-audio';
-import { generateAcknowledgment } from '@/lib/voice-filler';
 
 type VoicePhase = 'idle' | 'listening' | 'transcribing' | 'thinking' | 'speaking';
 
@@ -57,7 +56,6 @@ export default function VoiceConversationMode({
 }: VoiceConversationModeProps) {
   const [phase, setPhase] = useState<VoicePhase>('idle');
   const ttsControllerRef = useRef<TTSPlaybackController | null>(null);
-  const fillerControllerRef = useRef<TTSPlaybackController | null>(null);
   const lastSpokenRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
   const stuckTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -133,10 +131,6 @@ export default function VoiceConversationMode({
                 ttsControllerRef.current.stop();
                 ttsControllerRef.current = null;
               }
-              if (fillerControllerRef.current) {
-                fillerControllerRef.current.stop();
-                fillerControllerRef.current = null;
-              }
               // Transition to listening
               startListeningRef.current();
             }
@@ -202,27 +196,6 @@ export default function VoiceConversationMode({
         const data = await response.json();
         if (data.text && mountedRef.current) {
           setPhase('thinking');
-
-          // Immediately play a contextual filler while Claude thinks.
-          // "I hear your head is hurting. Let me assess..." fills the silence gap.
-          const fillerText = generateAcknowledgment(data.text, language);
-          const langConfig = SUPPORTED_LANGUAGES.find((l) => l.code === language);
-          const speechCode = langConfig?.speechCode || 'en-IN';
-
-          // Pre-warm the filler TTS (tiny text, synthesizes in ~100ms)
-          prewarmTTS(fillerText, speechCode);
-
-          // Play filler — stays in 'thinking' phase visually
-          const filler = streamTTS({
-            text: fillerText,
-            languageCode: speechCode,
-            onEnd: () => {
-              fillerControllerRef.current = null;
-            },
-          });
-          fillerControllerRef.current = filler;
-
-          // Fire the actual triage request in parallel
           onTranscript(data.text);
         } else if (mountedRef.current) {
           // Empty transcript — go back to listening automatically
@@ -275,12 +248,6 @@ export default function VoiceConversationMode({
   useEffect(() => {
     if (!textToSpeak || textToSpeak === lastSpokenRef.current) return;
     lastSpokenRef.current = textToSpeak;
-
-    // Stop filler audio if still playing — real response takes priority
-    if (fillerControllerRef.current) {
-      fillerControllerRef.current.stop();
-      fillerControllerRef.current = null;
-    }
 
     // Stop any ongoing TTS
     if (ttsControllerRef.current) {
@@ -340,19 +307,11 @@ export default function VoiceConversationMode({
         ttsControllerRef.current.stop();
         ttsControllerRef.current = null;
       }
-      if (fillerControllerRef.current) {
-        fillerControllerRef.current.stop();
-        fillerControllerRef.current = null;
-      }
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleMicTap = () => {
-    // Interrupt TTS / filler to start listening
-    if (fillerControllerRef.current) {
-      fillerControllerRef.current.stop();
-      fillerControllerRef.current = null;
-    }
+    // Interrupt TTS to start listening
     if (phase === 'speaking' && ttsControllerRef.current) {
       ttsControllerRef.current.stop();
       ttsControllerRef.current = null;
@@ -368,10 +327,6 @@ export default function VoiceConversationMode({
   };
 
   const handleExit = () => {
-    if (fillerControllerRef.current) {
-      fillerControllerRef.current.stop();
-      fillerControllerRef.current = null;
-    }
     if (ttsControllerRef.current) {
       ttsControllerRef.current.stop();
       ttsControllerRef.current = null;

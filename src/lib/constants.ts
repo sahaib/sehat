@@ -4,6 +4,7 @@ export const MODEL_ID = 'claude-opus-4-6';
 export const MAX_FOLLOW_UPS = 2;
 export const THINKING_BUDGET = 10000;
 export const VOICE_THINKING_BUDGET = 2048;
+export const VOICE_CONVERSATION_THINKING_BUDGET = 1024;
 
 export const EMERGENCY_NUMBERS = {
   unified: '112',

@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { buildSystemPrompt, getLanguageLabel } from './prompts';
 import { Language, Message, StreamEvent, TriageResult, FollowUpOption, PatientProfile } from '@/types';
-import { MODEL_ID, THINKING_BUDGET, VOICE_THINKING_BUDGET } from './constants';
+import { MODEL_ID, THINKING_BUDGET, VOICE_THINKING_BUDGET, VOICE_CONVERSATION_THINKING_BUDGET } from './constants';
 import { sanitizeMessage, sanitizeConversationHistory } from './input-guard';
 import { TRIAGE_TOOLS, executeTriageTool, ToolContext } from './triage-tools';
 
@@ -74,9 +74,11 @@ export async function* streamTriage(
   let lastError: unknown = null;
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
-      const thinkingBudget = inputMode === 'voice' || inputMode === 'voice_conversation'
-        ? VOICE_THINKING_BUDGET
-        : THINKING_BUDGET;
+      const thinkingBudget = inputMode === 'voice_conversation'
+        ? VOICE_CONVERSATION_THINKING_BUDGET
+        : inputMode === 'voice'
+          ? VOICE_THINKING_BUDGET
+          : THINKING_BUDGET;
 
       // Agentic tool-use loop: Claude decides which tools to call
       let toolRound = 0;
@@ -84,9 +86,10 @@ export async function* streamTriage(
       const agentMessages: Anthropic.MessageParam[] = [...messages];
 
       while (toolRound <= MAX_TOOL_ROUNDS) {
-        // On the first round, enable tools. On subsequent rounds (tool result follow-ups),
-        // also enable tools so Claude can make chained tool calls.
-        const useTools = toolRound < MAX_TOOL_ROUNDS;
+        // Voice conversation mode skips tools entirely for speed (~1-5s faster).
+        // Tools still available for text mode and single voice submissions.
+        const isVoiceConversation = inputMode === 'voice_conversation';
+        const useTools = !isVoiceConversation && toolRound < MAX_TOOL_ROUNDS;
 
         const baseSystemPrompt = buildSystemPrompt(language, languageLabel);
         const patientContext = patientProfile ? buildPatientContext(patientProfile, languageLabel) : '';
