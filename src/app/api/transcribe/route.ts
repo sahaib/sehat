@@ -19,7 +19,12 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const formData = await request.formData();
+    let formData: FormData;
+    try {
+      formData = await request.formData();
+    } catch {
+      return Response.json({ error: 'Audio file is required (multipart/form-data)' }, { status: 400 });
+    }
     const audioFile = formData.get('audio') as File | null;
     const languageHint = formData.get('language') as string | null;
 
