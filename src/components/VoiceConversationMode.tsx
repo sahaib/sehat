@@ -42,6 +42,8 @@ interface VoiceConversationModeProps {
   onExit: () => void;
   textToSpeak: string | null;
   isProcessing: boolean;
+  /** When false, voice mode won't auto-listen after TTS ends (e.g. follow-up buttons shown) */
+  shouldAutoListen?: boolean;
 }
 
 // Safety timeout: if stuck in thinking/transcribing for >20s, reset to idle
@@ -53,6 +55,7 @@ export default function VoiceConversationMode({
   onExit,
   textToSpeak,
   isProcessing,
+  shouldAutoListen = true,
 }: VoiceConversationModeProps) {
   const [phase, setPhase] = useState<VoicePhase>('idle');
   const ttsControllerRef = useRef<TTSPlaybackController | null>(null);
@@ -198,19 +201,23 @@ export default function VoiceConversationMode({
           setPhase('thinking');
           onTranscript(data.text);
         } else if (mountedRef.current) {
-          // Empty transcript — go back to listening automatically
+          // Empty transcript (silence/noise) — only auto-retry if no UI is waiting for input
           setPhase('idle');
-          setTimeout(() => {
-            if (mountedRef.current) startListeningRef.current();
-          }, 300);
+          if (shouldAutoListenRef.current) {
+            setTimeout(() => {
+              if (mountedRef.current && shouldAutoListenRef.current) startListeningRef.current();
+            }, 300);
+          }
         }
       } catch {
         if (mountedRef.current) {
           setPhase('idle');
-          // Auto-retry listening on transcription error
-          setTimeout(() => {
-            if (mountedRef.current) startListeningRef.current();
-          }, 300);
+          // Only auto-retry if appropriate
+          if (shouldAutoListenRef.current) {
+            setTimeout(() => {
+              if (mountedRef.current && shouldAutoListenRef.current) startListeningRef.current();
+            }, 300);
+          }
         }
       }
     },
@@ -232,6 +239,8 @@ export default function VoiceConversationMode({
   // Keep a stable ref so callbacks don't go stale
   const startListeningRef = useRef(startListening);
   startListeningRef.current = startListening;
+  const shouldAutoListenRef = useRef(shouldAutoListen);
+  shouldAutoListenRef.current = shouldAutoListen;
 
   // Sync phase with parent processing state
   useEffect(() => {
@@ -271,20 +280,24 @@ export default function VoiceConversationMode({
         ttsControllerRef.current = null;
         if (mountedRef.current) {
           setPhase('idle');
-          // Auto-listen after speaking
-          setTimeout(() => {
-            if (mountedRef.current) startListeningRef.current();
-          }, 400);
+          // Only auto-listen if parent says it's OK (no follow-up buttons / result showing)
+          if (shouldAutoListenRef.current) {
+            setTimeout(() => {
+              if (mountedRef.current && shouldAutoListenRef.current) startListeningRef.current();
+            }, 400);
+          }
         }
       },
       onError: () => {
         ttsControllerRef.current = null;
         if (mountedRef.current) {
           setPhase('idle');
-          // Auto-listen on TTS error too so voice loop doesn't break
-          setTimeout(() => {
-            if (mountedRef.current) startListeningRef.current();
-          }, 400);
+          // Only auto-listen if parent says it's OK
+          if (shouldAutoListenRef.current) {
+            setTimeout(() => {
+              if (mountedRef.current && shouldAutoListenRef.current) startListeningRef.current();
+            }, 400);
+          }
         }
       },
     });
@@ -296,7 +309,7 @@ export default function VoiceConversationMode({
   useEffect(() => {
     mountedRef.current = true;
     const t = setTimeout(() => {
-      if (mountedRef.current) startListeningRef.current();
+      if (mountedRef.current && shouldAutoListenRef.current) startListeningRef.current();
     }, 300);
     return () => {
       mountedRef.current = false;

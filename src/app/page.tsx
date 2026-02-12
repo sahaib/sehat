@@ -537,6 +537,16 @@ function Home() {
       state.followUpCount >= MAX_FOLLOW_UPS);
   const isInputDisabled = state.isStreaming || state.isThinking;
 
+  // Voice mode: don't auto-listen when follow-up buttons or final result are displayed.
+  // The user needs to read the UI before speaking again. Auto-listening in these states
+  // records ambient noise → Sarvam hallucinates YouTube intros from silence.
+  const hasFollowUpButtons = !!(
+    state.currentResult?.needs_follow_up &&
+    state.currentResult?.follow_up_options?.length &&
+    state.followUpCount < MAX_FOLLOW_UPS
+  );
+  const voiceShouldAutoListen = !hasFollowUpButtons && !showResult;
+
   // Derive text to auto-speak in voice mode.
   // IMPORTANT: Keep it SHORT — voice should give a concise summary, not read a report.
   // Max ~300 chars, truncated at sentence boundary.
@@ -870,6 +880,7 @@ function Home() {
               onExit={() => setIsVoiceMode(false)}
               textToSpeak={voiceTextToSpeak}
               isProcessing={state.isStreaming || state.isThinking}
+              shouldAutoListen={voiceShouldAutoListen}
             />
           </ErrorBoundary>
         ) : (

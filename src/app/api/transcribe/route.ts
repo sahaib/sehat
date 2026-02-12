@@ -93,16 +93,35 @@ export async function POST(request: NextRequest) {
 
     // ── STT hallucination detection ──
     // Sarvam (and Whisper) hallucinate long text from very short/quiet audio.
-    // Classic signature: tiny audio (<100KB, <2s) produces 200+ char transcripts,
-    // often repetitive nonsense (e.g. Samsung Galaxy reviews, YouTube outros).
+    // Classic signatures:
+    //   1. Tiny/silent audio produces long transcripts (YouTube intros, product reviews)
+    //   2. Repetitive phrases (same sentence 3+ times)
+    //   3. Common hallucination content (subscribe, channel, review, etc.)
     const audioBytesPerCharRatio = audioFile.size / Math.max(transcript.length, 1);
+    const lowerTranscript = transcript.toLowerCase();
+
+    // Common hallucination phrases — Sarvam hallucinates these from silence/noise
+    const HALLUCINATION_KEYWORDS = [
+      'welcome to', 'subscribe', 'channel', 'like and share',
+      'video', 'samsung', 'galaxy', 'iphone', 'review',
+      'unboxing', 'best phone', 'manufacturer', 'this video',
+      'another video', 'our channel', 'my channel',
+      'engine and tires', 'raj kumar', 'press the bell',
+      'notification', 'comment below',
+    ];
+    const hallucinationKeywordHits = HALLUCINATION_KEYWORDS.filter(kw => lowerTranscript.includes(kw)).length;
+
     const isLikelyHallucination =
       // Tiny audio producing a novel
       (audioFile.size < 100_000 && transcript.length > 150) ||
       // Extremely low bytes-per-char ratio (normal speech: ~200-500 bytes/char)
       (audioBytesPerCharRatio < 50 && transcript.length > 100) ||
       // Repetitive phrases (hallucination signature: same phrase 3+ times)
-      /(.{15,})\1{2,}/i.test(transcript);
+      /(.{15,})\1{2,}/i.test(transcript) ||
+      // Contains 2+ hallucination keywords — almost certainly not real medical speech
+      hallucinationKeywordHits >= 2 ||
+      // Single hallucination keyword + short audio = very likely noise
+      (hallucinationKeywordHits >= 1 && audioFile.size < 200_000);
 
     if (isLikelyHallucination) {
       console.warn('[Transcribe] Hallucination detected, rejecting:', {
