@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useUser, UserButton, SignInButton } from '@clerk/nextjs';
 
 interface ClerkAuthButtonsProps {
@@ -10,9 +11,23 @@ interface ClerkAuthButtonsProps {
  * Clerk-dependent auth buttons for the header.
  * ONLY render this component inside ClerkProvider
  * (i.e., when CLERK_ENABLED is true).
+ *
+ * Also syncs Clerk firstName → localStorage so the greeting can use it.
  */
 export default function ClerkAuthButtons({ onProfileClick }: ClerkAuthButtonsProps) {
-  const { isSignedIn, isLoaded } = useUser();
+  const { isSignedIn, isLoaded, user } = useUser();
+
+  // Sync Clerk name to localStorage for the welcome greeting
+  useEffect(() => {
+    if (isLoaded && isSignedIn && user?.firstName) {
+      const existing = localStorage.getItem('sehat_user_name');
+      if (!existing) {
+        localStorage.setItem('sehat_user_name', user.firstName);
+        // Trigger a storage event so the page picks it up if already mounted
+        window.dispatchEvent(new Event('sehat-name-sync'));
+      }
+    }
+  }, [isLoaded, isSignedIn, user?.firstName]);
 
   if (!isLoaded) return null;
 

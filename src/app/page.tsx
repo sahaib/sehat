@@ -235,6 +235,16 @@ function Home() {
   const [resumedDate, setResumedDate] = useState<string | null>(null);
   const searchParams = useSearchParams();
 
+  // Listen for Clerk name sync (fires when ClerkAuthButtons writes firstName to localStorage)
+  useEffect(() => {
+    const onNameSync = () => {
+      const name = localStorage.getItem('sehat_user_name');
+      if (name) setUserName(name);
+    };
+    window.addEventListener('sehat-name-sync', onNameSync);
+    return () => window.removeEventListener('sehat-name-sync', onNameSync);
+  }, []);
+
   useEffect(() => {
     if (!mounted) {
       setMounted(true);
