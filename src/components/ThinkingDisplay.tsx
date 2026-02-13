@@ -234,6 +234,11 @@ export default function ThinkingDisplay({
   if (!content && !isThinking && toolSteps.length === 0) return null;
 
   const completedCount = Array.from(stepStates.values()).filter(v => v === 'completed' || v === 'active').length;
+  // If no triage steps matched (only tool steps, or nothing), hide the clinical step list
+  const isNonTriageQuery = NON_MEDICAL_PATTERN.test(content);
+  const triageStepsToShow = isNonTriageQuery
+    ? STEP_DEFINITIONS.filter(s => s.id === 'context' && toolSteps.length > 0)
+    : STEP_DEFINITIONS;
 
   return (
     <div className="w-full animate-fade-in thinking-border" aria-live="polite">
@@ -308,14 +313,14 @@ export default function ThinkingDisplay({
             <div className="h-1 bg-purple-100 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all duration-700 ease-out"
-                style={{ width: `${Math.round((completedCount / STEP_DEFINITIONS.length) * 100)}%` }}
+                style={{ width: `${Math.round((completedCount / (triageStepsToShow.length || 1)) * 100)}%` }}
               />
             </div>
           )}
 
           {/* Step-by-step progress */}
           <div className="space-y-2">
-            {STEP_DEFINITIONS.map((step, i) => {
+            {triageStepsToShow.map((step, i) => {
               const state = stepStates.get(step.id);
               const isActive = state === 'active' && isThinking;
               const isDone = state === 'completed' || (state === 'active' && !isThinking);
@@ -446,7 +451,7 @@ export default function ThinkingDisplay({
           <span>
             {completedCount === 0 && toolSteps.length > 0
               ? `${toolSteps.length} tool${toolSteps.length > 1 ? 's' : ''} used`
-              : `${completedCount}/${STEP_DEFINITIONS.length} analysis steps completed${toolSteps.length > 0 ? ` + ${toolSteps.length} tool${toolSteps.length > 1 ? 's' : ''} used` : ''}`
+              : `${completedCount}/${triageStepsToShow.length} analysis steps completed${toolSteps.length > 0 ? ` + ${toolSteps.length} tool${toolSteps.length > 1 ? 's' : ''} used` : ''}`
             }
           </span>
         </div>

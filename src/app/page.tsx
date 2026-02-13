@@ -29,6 +29,7 @@ import ProfileForm from '@/components/ProfileForm';
 import FileUpload from '@/components/FileUpload';
 import DisclaimerFooter from '@/components/DisclaimerFooter';
 import ReadAloudButton from '@/components/ReadAloudButton';
+import NearbyHospitals from '@/components/NearbyHospitals';
 import SehatOrb from '@/components/SehatOrb';
 import { prewarmTTS } from '@/lib/tts-client';
 import { startCalmAudio, stopCalmAudio } from '@/lib/calm-audio';
@@ -984,6 +985,13 @@ function Home() {
               </div>
             </div>
           )}
+
+        {/* Standalone nearby hospitals — shown when tool found hospitals but no final result card is visible */}
+        {!showResult && state.nearbyHospitals.length > 0 && (
+          <div className="animate-fade-in">
+            <NearbyHospitals hospitals={state.nearbyHospitals} />
+          </div>
+        )}
 
         {/* Triage Result */}
         {showResult && state.currentResult && (
