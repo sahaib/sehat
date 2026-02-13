@@ -33,14 +33,18 @@
 - **Voice Conversation Mode**: Continuous hands-free loop (speak → triage → TTS → auto-listen)
 - **Sarvam AI** for Indian-language STT (Saarika v2.5) and TTS (Bulbul v3 via WebSocket streaming)
 - **Zero-Latency Emergency Detection**: 200+ multilingual keywords catch life-threatening emergencies in <50ms — including anaphylaxis, diabetic emergencies, dengue warning signs, burns, road accidents
-- **Transparent AI Reasoning**: Watch Opus 4.6's extended thinking chain stream in real-time with step detection
+- **Transparent AI Reasoning**: Watch Opus 4.6's extended thinking chain stream in real-time with step detection and progress bar
+- **13 Agentic Tools**: Claude autonomously calls tools across 6 categories — patient context, symptom analysis, specialist routing, women's health, regional intelligence, and action tools (clinical notes, follow-up scheduling, risk profile updates)
+- **Interactive Follow-up Options**: When Claude needs more info, tappable pill buttons appear with common answers — essential for low-literacy users
+- **Profile-Aware Personalization**: Signed-in users get addressed by name, pre-existing conditions factor into severity thresholds automatically
+- **Preferred Language**: Set once in profile, the entire app loads in your language across sessions
 - **Exportable Doctor Card**: Bilingual PDF with severity, symptoms, clinical summary, first aid, warnings — with language selector (English/Local/Bilingual)
 - **Dangerous Home Remedy Warnings**: Culturally specific (toothpaste on burns, tourniquets for snake bites, gripe water for diarrhea, spoons in mouth during seizures, etc.)
 - **WORST-FIRST Triage Principle**: When uncertain, classify at higher severity (mirrors ESI/MTS clinical frameworks)
 - **Clinical Red Flags**: Sepsis, diabetic emergencies, anaphylaxis, tropical diseases (dengue/malaria/leptospirosis), environmental hazards (heat stroke, pesticide exposure), neonatal/pediatric specific flags
 - **Calm Audio**: Ambient sound during AI thinking phase to make the wait feel intentional
 
-### Period Health Companion (NEW)
+### Period Health Companion
 AI-powered menstrual health tracker for rural Indian women:
 - **Cycle logging** with flow level, symptoms, mood tracking
 - **AI predictions** for next period based on logged history
@@ -55,6 +59,14 @@ AI-powered menstrual health tracker for rural Indian women:
 - **Health Dashboard**: Personal health trends, severity breakdown, symptom frequency, timeline
 - **Document Analysis**: Upload lab reports/prescriptions — Claude explains them in simple language
 - **Admin Telemetry**: Supabase-backed persistent metrics with admin gate
+
+### UI/UX
+- **Voice-first welcome**: Ambient glow orb with waveform icon, quick-start symptom chips per language
+- **AppShell navigation**: Consistent header + mobile bottom nav across all pages
+- **Glass morphism**: Frosted glass headers, inputs, and cards with backdrop blur
+- **Clinical design system**: Unified card styling, skeleton loading, staggered animations
+- **Mobile-first**: Designed for phones — touch targets, safe areas, responsive layouts
+- **Zero external UI libraries**: Every component built from scratch
 
 ### Security
 - **Prompt injection defense**: Input validation, system prompt hardening, user message delimiters, output schema validation
@@ -71,11 +83,14 @@ User (Voice/Text) → Client Emergency Detection (<1ms)
                    ↓
               Next.js API Route → Server Emergency Detection
                    ↓
-              Claude Opus 4.6 (Extended Thinking, 10K token budget)
+              Claude Opus 4.6 (Extended Thinking + Tool Use)
+                   ↓ multi-turn tool loop (max 3 rounds)
+              13 Agentic Tools → Patient history, symptoms, specialists,
+                                  regional intel, clinical notes, risk profiles
                    ↓
-              SSE Stream → Thinking Chain + Severity Card + Action Plan
+              SSE Stream → Thinking + Tool Calls + Severity Card + Action Plan
                    ↓
-              Supabase (sessions, messages, results, telemetry)
+              Supabase (sessions, messages, results, clinical notes, telemetry)
                    ↓
         Voice Mode: TTS auto-speaks → auto-listens → loop continues
 ```
@@ -83,9 +98,11 @@ User (Voice/Text) → Client Emergency Detection (<1ms)
 **Key design decisions:**
 - **Single Next.js 16 monolith** — no separate backend, single deployment
 - **Two-layer emergency detection** — client-side deterministic + server-side contextual
-- **SSE streaming** — thinking chain streams to UI in real-time
+- **Agentic tool use** — Claude decides which tools to call; simple cases skip tools entirely
+- **SSE streaming** — thinking chain + tool calls stream to UI in real-time
 - **Fire-and-forget DB writes** — non-blocking persistence, graceful fallback
 - **WebSocket TTS proxy** — server-side proxy to Sarvam WS API for progressive MP3 streaming
+- **Dual-layer language persistence** — localStorage for instant load + Supabase for cross-device sync
 
 ## Tech Stack
 
@@ -185,14 +202,28 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ### How Opus 4.6 is Used
 - **Extended thinking** (10K token budget for text, 2K for voice) for structured 8-step clinical reasoning visible to users
+- **13 agentic tools** — Claude autonomously retrieves patient history, analyzes symptoms, routes to specialists, checks regional disease patterns, and writes clinical notes
+- **Multi-turn tool use** — up to 3 rounds of tool calls per triage, streaming tool events to UI in real-time
 - **Multilingual code-switching** — handles Hinglish, Tanglish naturally across 7 languages
 - **WORST-FIRST reasoning** — considers worst-case scenario first, then works down (mirrors ESI/MTS)
 - **Cultural sensitivity** — appropriate address forms, Indian healthcare system mapping, home remedy warnings
+- **Profile-aware reasoning** — pre-existing conditions factor into severity thresholds (diabetes + fever = minimum urgent)
 - **Document analysis** — explains lab reports and prescriptions in simple language
 - **Period health AI** — menstrual health education in 7 Indian languages
-- **6 iterations of prompt refinement** — from 200 words to 4,200 words of clinical reasoning framework
+- **7 iterations of prompt refinement** — from 200 words to 4,800 words of clinical reasoning framework
+- **10 iterations of architecture** — from bare text→Claude→response to full agentic platform with voice, tools, and persistent profiles
 
-See [docs/ITERATION_LOG.md](docs/ITERATION_LOG.md) for the full evolution from v0.1 to v0.6.
+See [docs/ITERATION_LOG.md](docs/ITERATION_LOG.md) for the full evolution from v0.1 to v1.0.
+
+### Key Metrics
+- **70 commits** over 4 days (solo builder)
+- **~13,900 lines** of TypeScript
+- **70 source files** across 13 API routes, 21 components, 7 pages
+- **13 agentic tools** (10 read + 3 write)
+- **7 Indian languages** with code-mixing support
+- **200+ emergency keywords** across all languages
+- **Zero external UI libraries** — custom components throughout
+- **Sub-50ms** emergency detection latency
 
 ---
 
