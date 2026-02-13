@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Noto_Sans } from 'next/font/google';
 import { ClerkProvider } from '@clerk/nextjs';
+import { Analytics } from '@vercel/analytics/react';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import './globals.css';
 
@@ -107,6 +108,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-gradient-to-br from-teal-50/80 via-white to-indigo-50/30 font-sans">
         <ErrorBoundary>{children}</ErrorBoundary>
+        <Analytics />
       </body>
     </html>
   );
