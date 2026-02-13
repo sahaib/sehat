@@ -106,7 +106,8 @@ export type StreamEvent =
   | { type: 'emergency'; data: EmergencyDetection }
   | { type: 'tool_call'; name: string; input: Record<string, unknown> }
   | { type: 'tool_result'; name: string; result: Record<string, unknown> }
-  | { type: 'early_tts'; content: string };
+  | { type: 'early_tts'; content: string }
+  | { type: 'facility_result'; hospitals: NearbyHospital[]; fallback_url: string | null; message: string };
 
 export interface ToolStep {
   name: string;
@@ -146,5 +147,6 @@ export type ConversationAction =
   | { type: 'STREAM_TOOL_CALL'; name: string; input: Record<string, unknown> }
   | { type: 'STREAM_TOOL_RESULT'; name: string; result: Record<string, unknown> }
   | { type: 'CLIENT_EMERGENCY'; detection: EmergencyDetection }
+  | { type: 'FACILITY_RESULT'; hospitals: NearbyHospital[]; fallbackUrl: string | null; message: string }
   | { type: 'RESTORE_SESSION'; sessionId: string; messages: Message[]; result: TriageResult | null; thinkingContent: string; language: Language }
   | { type: 'RESET' };

@@ -1,12 +1,16 @@
 import { NextRequest } from 'next/server';
 import { detectEmergency } from '@/lib/emergency-detector';
 import { streamTriage } from '@/lib/triage-agent';
-import { TriageRequest, StreamEvent, PatientProfile } from '@/types';
+import { TriageRequest, StreamEvent, PatientProfile, GeoLocation } from '@/types';
 import { telemetry, InputMode, TriageEvent } from '@/lib/telemetry';
 import { saveTriageSession, saveConversationMessage, saveTriageResult } from '@/lib/db';
 import { validateLanguage, sanitizeMessage, sanitizeConversationHistory } from '@/lib/input-guard';
 import { rateLimit, getClientIP } from '@/lib/rate-limit';
 import { getServiceClient } from '@/lib/supabase';
+import { executeTriageTool } from '@/lib/triage-tools';
+
+// Fast regex to detect facility-only queries (no symptoms, just asking for nearby hospitals)
+const FACILITY_QUERY_PATTERN = /^(?:nearby|nearest|closest|find|show|where)\s*(?:clinics?|hospitals?|doctors?|phc|health\s*cent[re]+|medical|dispensary|facilities?|healthcare)|(?:clinics?|hospitals?|doctors?|phc|health\s*cent[re]+|dispensary)\s*(?:near(?:by)?|close|around)\s*(?:me|here)?$|^(?:paas|nazdeek|kareeb|najdeeki|aas\s*paas)\s+(?:hospital|clinic|davakhana|aspatal|doctor)|(?:hospital|clinic|davakhana|aspatal|doctor)\s+(?:paas|nazdeek|kareeb|najdeeki|aas\s*paas)/i;
 
 async function getClerkUserId(): Promise<string | null> {
   try {
@@ -126,6 +130,43 @@ export async function POST(request: NextRequest) {
             language,
             is_follow_up: sanitizedHistory.length > 0,
           });
+
+          // ── Fast path: facility-only queries skip Claude entirely ──
+          if (FACILITY_QUERY_PATTERN.test(sanitizedMessage.trim()) && sanitizedHistory.length === 0) {
+            const toolResult = await executeTriageTool(
+              'find_nearby_hospitals',
+              { care_level: 'hospital', radius_km: 10 },
+              { clerkUserId, sessionId, location: (location as GeoLocation) || null }
+            );
+            const hospitals = Array.isArray(toolResult.hospitals) ? toolResult.hospitals : [];
+            const fallbackUrl = typeof toolResult.fallback_url === 'string' ? toolResult.fallback_url : null;
+
+            const FACILITY_MESSAGES: Record<string, string> = {
+              hi: 'यहाँ आपके पास के अस्पताल और क्लीनिक हैं। अगर कोई स्वास्थ्य समस्या है तो बताइए।',
+              ta: 'உங்களுக்கு அருகிலுள்ள மருத்துவமனைகள். ஏதாவது உடல்நலப் பிரச்சனை இருந்தால் சொல்லுங்கள்.',
+              te: 'మీ సమీపంలోని ఆసుపత్రులు ఇక్కడ ఉన్నాయి. ఏదైనా ఆరోగ్య సమస్య ఉంటే చెప్పండి.',
+              mr: 'तुमच्या जवळचे रुग्णालये येथे आहेत. काही आरोग्य समस्या असल्यास सांगा.',
+              kn: 'ಇಲ್ಲಿ ನಿಮ್ಮ ಹತ್ತಿರದ ಆಸ್ಪತ್ರೆಗಳಿವೆ. ಯಾವುದಾದರೂ ಆರೋಗ್ಯ ಸಮಸ್ಯೆ ಇದ್ದರೆ ಹೇಳಿ.',
+              bn: 'এখানে আপনার কাছের হাসপাতালগুলি আছে। কোনো স্বাস্থ্য সমস্যা থাকলে বলুন।',
+              en: 'Here are healthcare facilities near you. Let me know if you have any health concerns.',
+            };
+
+            const facilityMsg = FACILITY_MESSAGES[language] || FACILITY_MESSAGES.en;
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+              type: 'facility_result',
+              hospitals,
+              fallback_url: fallbackUrl,
+              message: facilityMsg,
+            })}\n\n`));
+
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+            tel.latencyMs = Date.now() - startTime;
+            tel.isMedicalQuery = false;
+            tel.severity = 'self_care';
+            telemetry.recordTriage(tel);
+            controller.close();
+            return;
+          }
 
           // Stream triage response from Claude (with tool use)
           for await (const event of streamTriage(

@@ -10,6 +10,7 @@ import {
   StreamEvent,
   Message,
   Language,
+  NearbyHospital,
   TriageResult as TriageResultType,
   FollowUpOption,
 } from '@/types';
@@ -197,6 +198,24 @@ function conversationReducer(
             ? { ...step, result: action.result, status: 'done' as const }
             : step
         ),
+      };
+    }
+
+    case 'FACILITY_RESULT': {
+      // Fast-path: facility query answered without Claude — add as assistant message + show hospitals
+      const facilityMsg: Message = {
+        id: generateId(),
+        role: 'assistant',
+        content: action.message,
+        timestamp: Date.now(),
+      };
+      return {
+        ...state,
+        messages: [...state.messages, facilityMsg],
+        nearbyHospitals: action.hospitals,
+        hospitalsFallbackUrl: action.fallbackUrl,
+        isStreaming: false,
+        isThinking: false,
       };
     }
 
@@ -547,6 +566,16 @@ function Home() {
                     result: event.result,
                   });
                   break;
+                case 'facility_result': {
+                  const fe = event as unknown as { hospitals: NearbyHospital[]; fallback_url: string | null; message: string };
+                  dispatch({
+                    type: 'FACILITY_RESULT',
+                    hospitals: fe.hospitals || [],
+                    fallbackUrl: fe.fallback_url || null,
+                    message: fe.message || '',
+                  });
+                  break;
+                }
                 case 'emergency':
                   dispatch({
                     type: 'STREAM_EMERGENCY',
