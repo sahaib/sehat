@@ -37,7 +37,11 @@ export default function ProfileForm({ onClose, language }: ProfileFormProps) {
           setAge(data.profile.age?.toString() || '');
           setGender(data.profile.gender || '');
           setConditions(data.profile.pre_existing_conditions || []);
-          if (data.profile.preferred_language) setPreferredLang(data.profile.preferred_language as Language);
+          if (data.profile.preferred_language) {
+            setPreferredLang(data.profile.preferred_language as Language);
+            // Sync to localStorage so main page picks it up on next load
+            localStorage.setItem('sehat_preferred_language', data.profile.preferred_language);
+          }
         }
         setLoaded(true);
       })

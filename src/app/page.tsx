@@ -251,8 +251,21 @@ function Home() {
       const savedName = localStorage.getItem('sehat_user_name');
       if (savedName) setUserName(savedName);
 
-      // Load preferred language from localStorage for instant site language
+      // Load preferred language — try localStorage first, fallback to profile API
       const savedLang = localStorage.getItem('sehat_preferred_language') as Language | null;
+      if (!savedLang) {
+        // No cached preference — fetch from profile API (authenticated users)
+        fetch('/api/profile')
+          .then(res => res.ok ? res.json() : null)
+          .then(data => {
+            if (data?.profile?.preferred_language) {
+              const lang = data.profile.preferred_language as Language;
+              localStorage.setItem('sehat_preferred_language', lang);
+              dispatch({ type: 'SET_LANGUAGE', language: lang });
+            }
+          })
+          .catch(() => { /* ignore — anonymous users or network issues */ });
+      }
 
       const resumeId = searchParams.get('resumeSession');
       if (resumeId) {
