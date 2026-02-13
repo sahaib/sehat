@@ -2,7 +2,7 @@
 
 **Builder:** Sahaib Singh Arora (solo)
 **Hackathon:** Built with Opus 4.6 — Claude Code Hackathon (Feb 10-16, 2026)
-**Total:** 55 commits, ~11,700 lines of TypeScript, 58 source files, 3 days of development
+**Total:** 65 commits, ~12,500 lines of TypeScript, 69 source files, 4 days of development
 
 ---
 
@@ -257,6 +257,40 @@ Centralized card styling via CSS custom properties and utility classes in `globa
 
 ---
 
+## v0.9 — Voice-First Hero + Layout Consistency (Feb 13)
+
+**What changed:**
+
+### Voice-First Welcome Redesign
+Completely rebuilt the main page welcome hero around a voice-first interaction model:
+- **Giant voice CTA** at center with ambient glow blobs (teal/cyan/indigo radial gradients, soft floating animation) — mirrors the voice-mode ambient effect but localized and subtle
+- **Waveform icon** replacing the microphone — five animated bars conveying audio/voice visually
+- **Quick-start symptom chips** per language ("सिर में दर्द है", "Headache", "தலைவலி") — tap to instantly start a triage without typing
+- **Compact language pills** at top of hero — pick language first, content updates below
+- **Stable vertical layout** using `justify-between` with `min-h-[3rem]` on variable-length subtitle text — voice button stays perfectly centered regardless of language selection
+
+### Full-Width Layout Fix
+The main page had visible sharp edges on both sides — the `max-w-5xl` container was clipping gradient blobs and glass effects at its boundary. Restructured the entire page layout to match AppShell's full-width pattern:
+- Outer `div` is full viewport width with `overflow-hidden`
+- Header and input area span full width (glass effects edge-to-edge)
+- Only inner content constrained to `max-w-5xl mx-auto`
+- Background effects (gradient blobs, hero-mesh) positioned in the full-width container
+
+### Period Health → AppShell
+The period health page had its own custom `NavHeader` and no mobile bottom nav. Migrated to use `AppShell` for consistency:
+- Standard header with SehatOrb branding and navigation
+- Mobile bottom nav (5 tabs) now present on all sub-pages
+- Language pills moved inline into page content
+- All early return states (loading, sign-in, error) also wrapped with AppShell
+
+### Placeholder & Spacing Polish
+- Shortened all 7 language placeholders to concise form (e.g., "Describe your symptoms..." instead of "Tell us how you're feeling. Describe your symptoms...") — prevents text truncation on mobile with action buttons
+- Added breathing room between "Tap to talk" text and quick-start chips
+
+**Files changed:** 4 (`page.tsx`, `globals.css`, `period-health/page.tsx`, `constants.ts`)
+
+---
+
 ## Architecture Evolution
 
 ```
@@ -268,6 +302,7 @@ v0.5: Full platform (history, reports, dashboard, period health, documents)
 v0.6: Security hardened, clinically audited, voice optimized
 v0.7: 13 agentic tools (read+write), interactive follow-up pills, profile-aware personalization
 v0.8: Clinical UI overhaul — SehatOrb, AppShell, design tokens, visual hierarchy
+v0.9: Voice-first hero, full-width layout fix, period health → AppShell
 ```
 
 ## Prompt Evolution
@@ -286,9 +321,9 @@ The system prompt went through 6 major revisions:
 
 ## Key Metrics
 
-- **56 commits** over 4 days
-- **~12,100 lines** of TypeScript
-- **60 source files** across 12 API routes, 21 components, 7 pages
+- **65 commits** over 4 days
+- **~12,500 lines** of TypeScript
+- **69 source files** across 12 API routes, 21 components, 7 pages
 - **13 agentic tools** (10 read + 3 write) with multi-turn tool-use loop
 - **7 Indian languages** with code-mixing support
 - **200+ emergency keywords** across all languages

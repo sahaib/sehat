@@ -613,8 +613,8 @@ function Home() {
   };
 
   return (
-    <main className="flex flex-col h-[100dvh] max-w-5xl mx-auto relative overflow-hidden">
-      {/* Deep ambient background mesh */}
+    <div className="relative h-[100dvh] overflow-hidden flex flex-col">
+      {/* Full-viewport background effects */}
       <div className="hero-mesh" aria-hidden="true" />
       <div className="gradient-blob gradient-blob-1" aria-hidden="true" />
       <div className="gradient-blob gradient-blob-2" aria-hidden="true" />
@@ -702,8 +702,9 @@ function Home() {
       {/* Conversation Area */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-4 py-3 space-y-4 scrollbar-hide relative z-0"
+        className="flex-1 overflow-y-auto scrollbar-hide relative z-0"
       >
+        <div className="max-w-5xl mx-auto px-4 py-3 space-y-4 min-h-full">
         {/* ═══ Welcome Hero ═══ */}
         {!hasConversation && (
           <div className="flex flex-col items-center justify-between h-full animate-fade-in py-4">
@@ -748,17 +749,25 @@ function Home() {
                 className="hero-voice-btn group"
                 aria-label="Start voice conversation"
               >
-                <span className="hero-voice-ring hero-voice-ring--1" />
-                <span className="hero-voice-ring hero-voice-ring--2" />
+                {/* Ambient glow — subtle teal blobs behind the orb */}
+                <div className="hero-ambient" aria-hidden="true">
+                  <div className="hero-ambient-blob hero-ambient-blob--1" />
+                  <div className="hero-ambient-blob hero-ambient-blob--2" />
+                  <div className="hero-ambient-blob hero-ambient-blob--3" />
+                </div>
                 <span className="hero-voice-orb sehat-orb">
-                  <svg className="w-10 h-10 text-white drop-shadow-md group-hover:scale-110 transition-transform duration-300" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M8.25 4.5a3.75 3.75 0 117.5 0v8.25a3.75 3.75 0 11-7.5 0V4.5z" />
-                    <path d="M6 10.5a.75.75 0 01.75.75v1.5a5.25 5.25 0 1010.5 0v-1.5a.75.75 0 011.5 0v1.5a6.751 6.751 0 01-6 6.709v2.291h3a.75.75 0 010 1.5h-7.5a.75.75 0 010-1.5h3v-2.291a6.751 6.751 0 01-6-6.709v-1.5A.75.75 0 016 10.5z" />
+                  {/* Waveform icon */}
+                  <svg className="w-10 h-10 text-white drop-shadow-md group-hover:scale-110 transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round">
+                    <line x1="4" y1="8" x2="4" y2="16" />
+                    <line x1="8" y1="5" x2="8" y2="19" />
+                    <line x1="12" y1="3" x2="12" y2="21" />
+                    <line x1="16" y1="5" x2="16" y2="19" />
+                    <line x1="20" y1="8" x2="20" y2="16" />
                   </svg>
                 </span>
               </button>
 
-              <p className="mt-4 text-sm font-medium text-teal-700/80 tracking-wide">
+              <p className="mt-4 mb-6 text-sm font-medium text-teal-700/80 tracking-wide">
                 Tap to talk
               </p>
             </div>
@@ -907,11 +916,13 @@ function Home() {
             </button>
           </div>
         )}
+        </div>
       </div>
 
-      {/* Input Area (fixed at bottom) — glass */}
-      <div className="flex-shrink-0 px-4 pb-4 pt-3 no-print safe-bottom z-10 relative"
+      {/* Input Area (fixed at bottom) — full-width glass background, constrained content */}
+      <div className="flex-shrink-0 no-print safe-bottom z-10 relative"
            style={{ background: 'linear-gradient(to top, rgba(255,255,255,0.95) 60%, rgba(255,255,255,0))' }}>
+        <div className="max-w-5xl mx-auto px-4 pb-4 pt-3">
         {isVoiceMode ? (
           <ErrorBoundary>
             <VoiceConversationMode
@@ -960,6 +971,7 @@ function Home() {
           </div>
         )}
         <DisclaimerFooter />
+        </div>
       </div>
 
       {/* Profile Form Modal */}
@@ -973,6 +985,6 @@ function Home() {
           }}
         />
       )}
-    </main>
+    </div>
   );
 }

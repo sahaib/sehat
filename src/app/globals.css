@@ -219,32 +219,61 @@
     inset 0 1px 0 rgba(255,255,255,0.15);
 }
 
-/* Pulse rings */
-.hero-voice-ring {
+/* Ambient glow behind hero orb — subtle, localized version of voice-mode ambient */
+.hero-ambient {
   position: absolute;
-  inset: -12px;
-  border-radius: 50%;
-  border: 2px solid rgba(13, 148, 136, 0.2);
+  inset: -40px;
   pointer-events: none;
-}
-.hero-voice-ring--1 {
-  animation: heroRingPulse 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-.hero-voice-ring--2 {
-  animation: heroRingPulse 3s cubic-bezier(0.4, 0, 0.2, 1) infinite 1.5s;
+  z-index: 0;
 }
 
-@keyframes heroRingPulse {
-  0% {
-    transform: scale(1);
-    opacity: 0.6;
-    border-color: rgba(13, 148, 136, 0.25);
-  }
-  100% {
-    transform: scale(1.8);
-    opacity: 0;
-    border-color: rgba(13, 148, 136, 0);
-  }
+.hero-ambient-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(30px);
+  will-change: transform, opacity;
+}
+
+.hero-ambient-blob--1 {
+  width: 80%;
+  height: 70%;
+  top: -10%;
+  left: -15%;
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.35) 0%, rgba(13, 148, 136, 0.15) 50%, transparent 70%);
+  animation: heroAmbient1 4s ease-in-out infinite;
+}
+
+.hero-ambient-blob--2 {
+  width: 70%;
+  height: 65%;
+  bottom: -10%;
+  right: -15%;
+  background: radial-gradient(circle, rgba(13, 148, 136, 0.3) 0%, rgba(45, 212, 191, 0.1) 50%, transparent 70%);
+  animation: heroAmbient2 5s ease-in-out infinite 0.8s;
+}
+
+.hero-ambient-blob--3 {
+  width: 50%;
+  height: 50%;
+  bottom: 5%;
+  left: 25%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+  animation: heroAmbient3 6s ease-in-out infinite 1.5s;
+}
+
+@keyframes heroAmbient1 {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.7; }
+  50% { transform: translate(8px, -6px) scale(1.1); opacity: 1; }
+}
+
+@keyframes heroAmbient2 {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.6; }
+  50% { transform: translate(-6px, -4px) scale(1.08); opacity: 0.9; }
+}
+
+@keyframes heroAmbient3 {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.5; }
+  50% { transform: translate(4px, -8px) scale(1.12); opacity: 0.75; }
 }
 
 /* ─── Quick-start Chips ────────────────────────── */

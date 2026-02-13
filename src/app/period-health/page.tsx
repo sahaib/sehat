@@ -6,7 +6,7 @@ import { Language } from '@/types';
 import { SUPPORTED_LANGUAGES } from '@/lib/constants';
 import ReadAloudButton from '@/components/ReadAloudButton';
 import RenderMarkdown from '@/components/RenderMarkdown';
-import SehatOrb from '@/components/SehatOrb';
+import AppShell from '@/components/AppShell';
 
 interface PeriodCycle {
   id: string;
@@ -271,53 +271,35 @@ export default function PeriodHealthPage() {
     { value: 'heavy', label: t('flowHeavy', language), color: 'bg-pink-600' },
   ];
 
-  // ─── Navigation header ───
-  const NavHeader = () => (
-    <header className="bg-white/80 backdrop-blur-md border-b border-pink-100 px-4 py-4 sticky top-0 z-10">
-      <div className="max-w-3xl mx-auto flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <Link href="/" title="Sehat">
-            <SehatOrb size="sm" />
-          </Link>
-          <div>
-            <h1 className="text-lg font-bold text-gray-800">{t(isAlly ? 'headerTitleAlly' : 'headerTitle', language)}</h1>
-            <p className="text-[10px] text-pink-400">{t(isAlly ? 'headerSubtitleAlly' : 'headerSubtitle', language)}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Link href="/history" className="text-xs text-gray-500 hover:text-pink-600 px-2.5 py-1.5 rounded-lg hover:bg-pink-50 transition-colors">{t('history', language)}</Link>
-          <Link href="/dashboard" className="text-xs text-gray-500 hover:text-pink-600 px-2.5 py-1.5 rounded-lg hover:bg-pink-50 transition-colors">{t('dashboard', language)}</Link>
-        </div>
-      </div>
-      {/* Language pills — matching main page style with pink theme */}
-      <div className="max-w-3xl mx-auto px-4 pt-2 pb-1 flex gap-1.5 overflow-x-auto scrollbar-hide">
-        {SUPPORTED_LANGUAGES.map((l) => (
-          <button
-            key={l.code}
-            onClick={() => setLanguage(l.code)}
-            className={`px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap transition-all ${
-              language === l.code
-                ? 'bg-pink-500 text-white shadow-sm'
-                : 'bg-white text-gray-500 border border-gray-200 hover:border-pink-200 hover:text-pink-600'
-            }`}
-          >
-            {l.nativeLabel}
-          </button>
-        ))}
-      </div>
-    </header>
+  // ─── Language pills (inline, no separate header) ───
+  const LanguagePills = () => (
+    <div className="flex gap-1.5 overflow-x-auto scrollbar-hide justify-center flex-wrap">
+      {SUPPORTED_LANGUAGES.map((l) => (
+        <button
+          key={l.code}
+          onClick={() => setLanguage(l.code)}
+          className={`px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap transition-all ${
+            language === l.code
+              ? 'bg-pink-500 text-white shadow-sm'
+              : 'bg-white text-gray-500 border border-gray-200 hover:border-pink-200 hover:text-pink-600'
+          }`}
+        >
+          {l.nativeLabel}
+        </button>
+      ))}
+    </div>
   );
 
   if (loading) {
-    return (<div className="min-h-screen bg-gradient-to-b from-pink-50 to-white"><NavHeader /><div className="max-w-3xl mx-auto px-4 py-6 space-y-4">{[...Array(3)].map((_, i) => (<div key={i} className="bg-white rounded-2xl border border-pink-100 p-5 h-24 animate-pulse" />))}</div></div>);
+    return (<AppShell title={t(isAlly ? 'headerTitleAlly' : 'headerTitle', language)}><div className="max-w-3xl mx-auto space-y-4">{[...Array(3)].map((_, i) => (<div key={i} className="bg-white rounded-2xl border border-pink-100 p-5 h-24 animate-pulse" />))}</div></AppShell>);
   }
 
   if (error === 'sign-in') {
-    return (<div className="min-h-screen bg-gradient-to-b from-pink-50 to-white"><NavHeader /><div className="flex flex-col items-center justify-center gap-4 p-4 py-20"><div className="w-16 h-16 rounded-full bg-pink-100 flex items-center justify-center"><span className="text-3xl">🌸</span></div><h2 className="text-xl font-bold text-gray-700">{t('signInTitle', language)}</h2><p className="text-gray-400 text-center max-w-sm">{t('signInDesc', language)}</p><Link href="/" className="mt-2 px-6 py-2.5 bg-pink-500 text-white rounded-xl font-medium hover:bg-pink-600 transition-colors">{t('backToSehat', language)}</Link></div></div>);
+    return (<AppShell title={t(isAlly ? 'headerTitleAlly' : 'headerTitle', language)}><div className="flex flex-col items-center justify-center gap-4 p-4 py-20"><div className="w-16 h-16 rounded-full bg-pink-100 flex items-center justify-center"><span className="text-3xl">🌸</span></div><h2 className="text-xl font-bold text-gray-700">{t('signInTitle', language)}</h2><p className="text-gray-400 text-center max-w-sm">{t('signInDesc', language)}</p><Link href="/" className="mt-2 px-6 py-2.5 bg-pink-500 text-white rounded-xl font-medium hover:bg-pink-600 transition-colors">{t('backToSehat', language)}</Link></div></AppShell>);
   }
 
   if (error) {
-    return (<div className="min-h-screen bg-gradient-to-b from-pink-50 to-white"><NavHeader /><div className="flex items-center justify-center py-20"><div className="text-center space-y-3"><p className="text-gray-500">{error}</p><button onClick={() => { setError(null); setLoading(true); fetchData(); }} className="px-4 py-2 bg-pink-500 text-white text-sm rounded-lg hover:bg-pink-600 transition-colors">{t('retry', language)}</button></div></div></div>);
+    return (<AppShell title={t(isAlly ? 'headerTitleAlly' : 'headerTitle', language)}><div className="flex items-center justify-center py-20"><div className="text-center space-y-3"><p className="text-gray-500">{error}</p><button onClick={() => { setError(null); setLoading(true); fetchData(); }} className="px-4 py-2 bg-pink-500 text-white text-sm rounded-lg hover:bg-pink-600 transition-colors">{t('retry', language)}</button></div></div></AppShell>);
   }
 
   const daysUntilNext = predictions?.nextPeriodDate
@@ -359,9 +341,10 @@ export default function PeriodHealthPage() {
   const FACT_KEYS = ['fact1', 'fact2', 'fact3', 'fact4', 'fact5'];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-pink-50 to-white">
-      <NavHeader />
-      <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
+    <AppShell title={t(isAlly ? 'headerTitleAlly' : 'headerTitle', language)}>
+      <div className="max-w-3xl mx-auto space-y-5">
+        {/* Language pills */}
+        <LanguagePills />
 
         {/* ════════ ALLY VIEW ════════ */}
         {isAlly && (
@@ -512,6 +495,6 @@ export default function PeriodHealthPage() {
 
         <p className="text-center text-[10px] text-gray-300 pb-4">{t(isAlly ? 'footerAlly' : 'footerTracker', language)}</p>
       </div>
-    </div>
+    </AppShell>
   );
 }
