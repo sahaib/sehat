@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Language } from '@/types';
+import { SUPPORTED_LANGUAGES } from '@/lib/constants';
 
 interface ProfileFormProps {
   onClose: () => void;
@@ -18,6 +19,7 @@ export default function ProfileForm({ onClose, language }: ProfileFormProps) {
   const [age, setAge] = useState('');
   const [gender, setGender] = useState('');
   const [conditions, setConditions] = useState<string[]>([]);
+  const [preferredLang, setPreferredLang] = useState<Language>(language);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -35,6 +37,7 @@ export default function ProfileForm({ onClose, language }: ProfileFormProps) {
           setAge(data.profile.age?.toString() || '');
           setGender(data.profile.gender || '');
           setConditions(data.profile.pre_existing_conditions || []);
+          if (data.profile.preferred_language) setPreferredLang(data.profile.preferred_language as Language);
         }
         setLoaded(true);
       })
@@ -53,6 +56,8 @@ export default function ProfileForm({ onClose, language }: ProfileFormProps) {
     } else {
       localStorage.removeItem('sehat_user_name');
     }
+    // Persist preferred language to localStorage for instant load on next visit
+    localStorage.setItem('sehat_preferred_language', preferredLang);
     try {
       await fetch('/api/profile', {
         method: 'POST',
@@ -62,7 +67,7 @@ export default function ProfileForm({ onClose, language }: ProfileFormProps) {
           age: age ? parseInt(age) : null,
           gender: gender || null,
           pre_existing_conditions: conditions,
-          preferred_language: language,
+          preferred_language: preferredLang,
         }),
       });
       onClose();
@@ -156,6 +161,26 @@ export default function ProfileForm({ onClose, language }: ProfileFormProps) {
                     }`}
                 >
                   {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Preferred Language */}
+          <div className="mb-4">
+            <label className="text-sm font-medium text-gray-600 block mb-1.5">Preferred Language</label>
+            <div className="flex flex-wrap gap-2">
+              {SUPPORTED_LANGUAGES.map(lang => (
+                <button
+                  key={lang.code}
+                  onClick={() => setPreferredLang(lang.code)}
+                  className={`px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300 border
+                    ${preferredLang === lang.code
+                      ? 'bg-teal-50/80 border-teal-300 text-teal-700 shadow-sm shadow-teal-100/50'
+                      : 'bg-white/60 border-gray-200 text-gray-600 hover:border-teal-200 hover:bg-white/80'
+                    }`}
+                >
+                  {lang.nativeLabel}
                 </button>
               ))}
             </div>

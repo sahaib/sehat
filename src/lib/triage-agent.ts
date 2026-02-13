@@ -29,6 +29,7 @@ function buildPatientContext(profile: PatientProfile, languageLabel: string): st
   if (profile.pre_existing_conditions && profile.pre_existing_conditions.length > 0) {
     parts.push(`Known pre-existing conditions: ${profile.pre_existing_conditions.join(', ')}`);
   }
+  if (profile.preferred_language) parts.push(`Preferred language: ${profile.preferred_language}`);
 
   if (parts.length === 0) return '';
 

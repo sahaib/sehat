@@ -251,6 +251,9 @@ function Home() {
       const savedName = localStorage.getItem('sehat_user_name');
       if (savedName) setUserName(savedName);
 
+      // Load preferred language from localStorage for instant site language
+      const savedLang = localStorage.getItem('sehat_preferred_language') as Language | null;
+
       const resumeId = searchParams.get('resumeSession');
       if (resumeId) {
         // Restore a previous session
@@ -303,6 +306,10 @@ function Home() {
         })();
       } else {
         dispatch({ type: 'RESET' });
+        // Apply preferred language for new sessions
+        if (savedLang) {
+          dispatch({ type: 'SET_LANGUAGE', language: savedLang });
+        }
       }
     }
   }, [mounted, searchParams]);
@@ -982,6 +989,11 @@ function Home() {
             setShowProfileForm(false);
             const savedName = localStorage.getItem('sehat_user_name');
             setUserName(savedName || '');
+            // Apply preferred language if user changed it in profile
+            const newLang = localStorage.getItem('sehat_preferred_language') as Language | null;
+            if (newLang && newLang !== state.language) {
+              dispatch({ type: 'SET_LANGUAGE', language: newLang });
+            }
           }}
         />
       )}
