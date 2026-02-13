@@ -155,6 +155,133 @@
   }
 }
 
+/* ─── Hero Background Mesh ──────────────────────── */
+.hero-mesh {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(13, 148, 136, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 100%, rgba(99, 102, 241, 0.05) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 40% at 10% 60%, rgba(45, 212, 191, 0.06) 0%, transparent 50%);
+}
+
+/* ─── Header Icon Button ───────────────────────── */
+.header-icon-btn {
+  @apply w-8 h-8 rounded-lg flex items-center justify-center
+         text-gray-400 hover:text-teal-600 hover:bg-teal-50/60
+         transition-all duration-200 active:scale-90;
+}
+
+/* ─── Hero Greeting Typography ─────────────────── */
+.hero-greeting {
+  @apply text-3xl font-bold text-gray-800 tracking-tight leading-tight;
+  text-wrap: balance;
+}
+@media (min-width: 640px) {
+  .hero-greeting { font-size: 2.25rem; }
+}
+
+/* ─── Hero Voice Button ────────────────────────── */
+.hero-voice-btn {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  background: none;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hero-voice-btn:hover { transform: scale(1.06); }
+.hero-voice-btn:active { transform: scale(0.96); }
+.hero-voice-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* Inner orb */
+.hero-voice-orb {
+  position: relative;
+  z-index: 2;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    0 8px 40px -8px rgba(13, 148, 136, 0.5),
+    0 4px 16px -4px rgba(13, 148, 136, 0.3),
+    inset 0 1px 0 rgba(255,255,255,0.15);
+}
+
+/* Pulse rings */
+.hero-voice-ring {
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  border: 2px solid rgba(13, 148, 136, 0.2);
+  pointer-events: none;
+}
+.hero-voice-ring--1 {
+  animation: heroRingPulse 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+.hero-voice-ring--2 {
+  animation: heroRingPulse 3s cubic-bezier(0.4, 0, 0.2, 1) infinite 1.5s;
+}
+
+@keyframes heroRingPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+    border-color: rgba(13, 148, 136, 0.25);
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+    border-color: rgba(13, 148, 136, 0);
+  }
+}
+
+/* ─── Quick-start Chips ────────────────────────── */
+.quick-chip {
+  @apply text-sm font-medium px-4 py-2 rounded-full
+         border border-teal-200/60 text-teal-700
+         transition-all duration-200
+         active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.quick-chip:hover:not(:disabled) {
+  background: rgba(13, 148, 136, 0.08);
+  border-color: rgba(13, 148, 136, 0.35);
+  box-shadow: 0 2px 12px -3px rgba(13, 148, 136, 0.2);
+}
+
+/* ─── Language Pills ───────────────────────────── */
+.lang-pill {
+  @apply text-xs font-medium px-3 py-1.5 rounded-full
+         text-gray-500 transition-all duration-200 active:scale-95;
+  background: rgba(255, 255, 255, 0.5);
+}
+.lang-pill:hover:not(:disabled) {
+  @apply text-teal-700;
+  background: rgba(255, 255, 255, 0.8);
+}
+.lang-pill--active {
+  @apply text-white font-semibold;
+  background: linear-gradient(135deg, #0d9488, #0f766e);
+  box-shadow: 0 2px 10px -2px rgba(13, 148, 136, 0.4);
+}
+.lang-pill--sm {
+  @apply text-[11px] px-2.5 py-1;
+}
+
 /* ─── Loading shimmer ─────────────────────────── */
 .shimmer-bg {
   background: linear-gradient(

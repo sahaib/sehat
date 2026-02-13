@@ -14,7 +14,6 @@ import {
 } from '@/types';
 import { detectEmergency } from '@/lib/emergency-detector';
 import { MAX_FOLLOW_UPS, SUPPORTED_LANGUAGES } from '@/lib/constants';
-import LanguageSelector from '@/components/LanguageSelector';
 import TextInput from '@/components/TextInput';
 import ConversationThread from '@/components/ConversationThread';
 import EmergencyBanner from '@/components/EmergencyBanner';
@@ -602,9 +601,21 @@ function Home() {
     }
   }, [isVoiceMode]);
 
+  // Quick-start suggestion chips (only shown in welcome)
+  const QUICK_STARTS: Record<Language, string[]> = {
+    hi: ['सिर में दर्द है', 'बुखार और खांसी', 'पेट में दर्द'],
+    ta: ['தலைவலி', 'காய்ச்சல் மற்றும் இருமல்', 'வயிற்று வலி'],
+    te: ['తలనొప్పి', 'జ్వరం మరియు దగ్గు', 'కడుపు నొప్పి'],
+    mr: ['डोकेदुखी', 'ताप आणि खोकला', 'पोटदुखी'],
+    kn: ['ತಲೆನೋವು', 'ಜ್ವರ ಮತ್ತು ಕೆಮ್ಮು', 'ಹೊಟ್ಟೆ ನೋವು'],
+    bn: ['মাথাব্যথা', 'জ্বর এবং কাশি', 'পেটে ব্যথা'],
+    en: ['Headache', 'Fever and cough', 'Stomach pain'],
+  };
+
   return (
-    <main className="flex flex-col h-[100dvh] max-w-2xl mx-auto relative overflow-hidden">
-      {/* Floating gradient blobs */}
+    <main className="flex flex-col h-[100dvh] max-w-5xl mx-auto relative overflow-hidden">
+      {/* Deep ambient background mesh */}
+      <div className="hero-mesh" aria-hidden="true" />
       <div className="gradient-blob gradient-blob-1" aria-hidden="true" />
       <div className="gradient-blob gradient-blob-2" aria-hidden="true" />
       <div className="gradient-blob gradient-blob-3" aria-hidden="true" />
@@ -623,69 +634,37 @@ function Home() {
         <EmergencyBanner detection={state.emergencyData} />
       )}
 
-      {/* Header — glass morphism */}
-      <header className="flex-shrink-0 px-4 pt-4 pb-2 no-print glass-header z-10 relative">
-        <div className="flex items-center justify-between mb-3">
+      {/* Header — matches AppShell pattern */}
+      <header className="flex-shrink-0 no-print glass-header z-10 relative border-b border-gray-200/60">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+          {/* Brand mark — matches AppShell */}
           <div className="flex items-center gap-2.5">
             <SehatOrb size="sm" />
-            <div>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-teal-700 to-teal-500 bg-clip-text text-transparent">Sehat</h1>
-              <p className="text-xs text-gray-400">AI Medical Triage</p>
-            </div>
+            <h1 className="text-sm font-bold bg-gradient-to-r from-teal-700 to-teal-500 bg-clip-text text-transparent">
+              Sehat
+            </h1>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Nav links */}
-            <Link
-              href="/history"
-              className="w-9 h-9 rounded-full flex items-center justify-center
-                         text-gray-400 hover:text-teal-600 hover:bg-teal-50/80
-                         transition-all duration-200 active:scale-90
-                         border border-transparent hover:border-teal-200"
-              aria-label="Chat history"
-              title="Chat History"
-            >
-              <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+
+          {/* Right actions */}
+          <div className="flex items-center gap-1">
+            <Link href="/history" className="header-icon-btn" aria-label="Chat history" title="History">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </Link>
-            <Link
-              href="/dashboard"
-              className="w-9 h-9 rounded-full flex items-center justify-center
-                         text-gray-400 hover:text-teal-600 hover:bg-teal-50/80
-                         transition-all duration-200 active:scale-90
-                         border border-transparent hover:border-teal-200"
-              aria-label="Health dashboard"
-              title="Dashboard"
-            >
-              <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <Link href="/dashboard" className="header-icon-btn" aria-label="Dashboard" title="Dashboard">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
               </svg>
             </Link>
-            <Link
-              href="/period-health"
-              className="w-9 h-9 rounded-full flex items-center justify-center
-                         text-gray-400 hover:text-pink-500 hover:bg-pink-50/80
-                         transition-all duration-200 active:scale-90
-                         border border-transparent hover:border-pink-200"
-              aria-label="Period health tracker"
-              title="Period Health"
-            >
-              <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <Link href="/period-health" className="header-icon-btn !text-gray-400 hover:!text-pink-500" aria-label="Period health" title="Period Health">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
               </svg>
             </Link>
-            {/* Profile button — only when Clerk is NOT enabled (ClerkAuthButtons has its own) */}
             {!CLERK_ENABLED && (
-              <button
-                onClick={() => setShowProfileForm(true)}
-                className="w-9 h-9 rounded-full flex items-center justify-center
-                           text-gray-400 hover:text-teal-600 hover:bg-teal-50/80
-                           transition-all duration-200 active:scale-90
-                           border border-transparent hover:border-teal-200"
-                aria-label="Edit health profile"
-                title="Health Profile"
-              >
-                <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <button onClick={() => setShowProfileForm(true)} className="header-icon-btn" aria-label="Health profile" title="Profile">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
                 </svg>
               </button>
@@ -693,15 +672,13 @@ function Home() {
             {hasConversation && (
               <button
                 onClick={handleReset}
-                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-teal-700
-                           px-3 py-1.5 rounded-lg hover:bg-teal-50/80 border border-transparent
-                           hover:border-teal-200 transition-all duration-200 active:scale-95"
-                aria-label="Start new conversation"
+                className="header-icon-btn !w-auto !px-2.5 gap-1"
+                aria-label="New conversation"
               >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" />
                 </svg>
-                New
+                <span className="text-[11px] font-medium">New</span>
               </button>
             )}
             {mounted && (
@@ -710,8 +687,8 @@ function Home() {
               ) : (
                 <a
                   href="/sign-in"
-                  className="text-xs text-teal-600 hover:text-teal-700 hover:bg-teal-50/80
-                             px-3 py-1.5 rounded-lg border border-teal-200/60 transition-all duration-200 font-medium
+                  className="text-[11px] text-teal-600 hover:text-teal-700 hover:bg-teal-50/80
+                             px-2.5 py-1 rounded-lg border border-teal-200/60 transition-all duration-200 font-semibold
                              backdrop-blur-sm"
                 >
                   Sign in
@@ -720,40 +697,108 @@ function Home() {
             )}
           </div>
         </div>
-
-        <LanguageSelector
-          selectedLanguage={state.language}
-          onLanguageChange={(lang) =>
-            dispatch({ type: 'SET_LANGUAGE', language: lang })
-          }
-          disabled={isInputDisabled}
-        />
       </header>
 
       {/* Conversation Area */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-hide relative z-0"
+        className="flex-1 overflow-y-auto px-4 py-3 space-y-4 scrollbar-hide relative z-0"
       >
-        {/* Welcome state */}
+        {/* ═══ Welcome Hero ═══ */}
         {!hasConversation && (
-          <div className="flex flex-col items-center justify-center h-full text-center space-y-5 py-12 animate-fade-in">
-            {/* Large ambient orb */}
-            <SehatOrb size="lg" />
-            <h2 className="text-3xl font-bold text-gray-800">
-              {userName
-                ? `${WELCOME_GREETINGS[state.language].split('!')[0]}, ${userName}!`
-                : WELCOME_GREETINGS[state.language]}
-            </h2>
-            <p className="text-gray-500 max-w-sm text-base leading-relaxed">
-              {WELCOME_SUBTITLES[state.language]}
-            </p>
-            <p className="flex items-center gap-1.5 text-sm text-teal-600/70">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
-              </svg>
-              Tap the mic or type below
-            </p>
+          <div className="flex flex-col items-center justify-between h-full animate-fade-in py-4">
+            {/* Top section: language picker first so user picks language, then content updates */}
+            <div className="w-full max-w-sm">
+              <div className="flex justify-center gap-1.5 flex-wrap">
+                {SUPPORTED_LANGUAGES.map((lang) => {
+                  const isSelected = state.language === lang.code;
+                  return (
+                    <button
+                      key={lang.code}
+                      onClick={() => dispatch({ type: 'SET_LANGUAGE', language: lang.code })}
+                      disabled={isInputDisabled}
+                      className={`lang-pill ${isSelected ? 'lang-pill--active' : ''}`}
+                      aria-label={`Select ${lang.label}`}
+                      aria-pressed={isSelected}
+                    >
+                      {lang.nativeLabel}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Center section: greeting + voice CTA (fixed vertical position) */}
+            <div className="flex flex-col items-center">
+              <div className="text-center mb-6 space-y-2">
+                <h2 className="hero-greeting">
+                  {userName
+                    ? `${WELCOME_GREETINGS[state.language].split('!')[0]}, ${userName}!`
+                    : WELCOME_GREETINGS[state.language]}
+                </h2>
+                <p className="text-gray-500/90 max-w-xs mx-auto text-[15px] leading-relaxed min-h-[3rem]">
+                  {WELCOME_SUBTITLES[state.language]}
+                </p>
+              </div>
+
+              {/* Hero voice CTA */}
+              <button
+                onClick={() => setIsVoiceMode(true)}
+                disabled={isInputDisabled}
+                className="hero-voice-btn group"
+                aria-label="Start voice conversation"
+              >
+                <span className="hero-voice-ring hero-voice-ring--1" />
+                <span className="hero-voice-ring hero-voice-ring--2" />
+                <span className="hero-voice-orb sehat-orb">
+                  <svg className="w-10 h-10 text-white drop-shadow-md group-hover:scale-110 transition-transform duration-300" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8.25 4.5a3.75 3.75 0 117.5 0v8.25a3.75 3.75 0 11-7.5 0V4.5z" />
+                    <path d="M6 10.5a.75.75 0 01.75.75v1.5a5.25 5.25 0 1010.5 0v-1.5a.75.75 0 011.5 0v1.5a6.751 6.751 0 01-6 6.709v2.291h3a.75.75 0 010 1.5h-7.5a.75.75 0 010-1.5h3v-2.291a6.751 6.751 0 01-6-6.709v-1.5A.75.75 0 016 10.5z" />
+                  </svg>
+                </span>
+              </button>
+
+              <p className="mt-4 text-sm font-medium text-teal-700/80 tracking-wide">
+                Tap to talk
+              </p>
+            </div>
+
+            {/* Bottom section: quick-start chips (anchored at bottom) */}
+            <div className="flex flex-wrap justify-center gap-2 max-w-sm">
+              {QUICK_STARTS[state.language].map((chip) => (
+                <button
+                  key={chip}
+                  onClick={() => handleTextSubmit(chip)}
+                  disabled={isInputDisabled}
+                  className="quick-chip"
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Language selector (compact) — shown during conversation */}
+        {hasConversation && (
+          <div className="flex justify-center -mt-1 mb-1">
+            <div className="flex gap-1 flex-wrap justify-center">
+              {SUPPORTED_LANGUAGES.map((lang) => {
+                const isSelected = state.language === lang.code;
+                return (
+                  <button
+                    key={lang.code}
+                    onClick={() => dispatch({ type: 'SET_LANGUAGE', language: lang.code })}
+                    disabled={isInputDisabled}
+                    className={`lang-pill lang-pill--sm ${isSelected ? 'lang-pill--active' : ''}`}
+                    aria-label={`Select ${lang.label}`}
+                    aria-pressed={isSelected}
+                  >
+                    {lang.nativeLabel}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -799,7 +844,6 @@ function Home() {
         {/* Triage Result */}
         {showResult && state.currentResult && (
           state.currentResult.is_medical_query === false ? (
-            /* Non-medical query: show friendly redirect as assistant chat bubble */
             <div className="flex justify-start animate-fade-in">
               <div className="chat-bubble chat-bubble-assistant">
                 <p className="whitespace-pre-wrap text-base leading-relaxed">
@@ -826,11 +870,7 @@ function Home() {
                 result={state.currentResult}
                 language={state.language}
               />
-
-              {/* File upload for medical reports — only after results */}
               <FileUpload language={state.language} disabled={isInputDisabled} />
-
-              {/* Smart sign-up prompt — only after non-severe results, never interrupt emergency/urgent */}
               {(state.currentResult.severity === 'routine' || state.currentResult.severity === 'self_care') && (
                 <SignUpPrompt
                   language={state.language}
@@ -928,7 +968,6 @@ function Home() {
           language={state.language}
           onClose={() => {
             setShowProfileForm(false);
-            // Refresh name after profile save
             const savedName = localStorage.getItem('sehat_user_name');
             setUserName(savedName || '');
           }}
