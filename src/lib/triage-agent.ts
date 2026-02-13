@@ -165,16 +165,21 @@ export async function* streamTriage(
               textAccumulator += event.delta.text;
               yield { type: 'text', content: event.delta.text };
 
-              // Early TTS: extract reasoning_summary from streaming JSON before full response.
-              // This lets the client start TTS synthesis 1-2s before the result event arrives.
-              if (!earlyTtsEmitted && textAccumulator.includes('"reasoning_summary"')) {
-                const match = textAccumulator.match(/"reasoning_summary"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+              // Early TTS: extract go_to from streaming JSON before full response.
+              // Voice mode speaks go_to + first_aid (the card content), so pre-warm go_to.
+              // go_to appears inside "action_plan": { "go_to": "..." }
+              if (!earlyTtsEmitted && textAccumulator.includes('"go_to"')) {
+                const match = textAccumulator.match(/"go_to"\s*:\s*"((?:[^"\\]|\\.)*)"/);
                 if (match) {
                   earlyTtsEmitted = true;
                   try {
-                    const summary = JSON.parse(`"${match[1]}"`); // proper JSON unescape
-                    if (summary && summary.length > 10) {
-                      yield { type: 'early_tts', content: summary };
+                    let goToText = JSON.parse(`"${match[1]}"`); // proper JSON unescape
+                    // Normalize exactly like validateTriageResult's clean() does:
+                    goToText = formatNumberedItems(stripEmojis(goToText));
+                    // Don't truncate here — first_aid will be appended client-side.
+                    // Pre-warm just the go_to portion (biggest chunk of spoken text).
+                    if (goToText && goToText.length > 10) {
+                      yield { type: 'early_tts', content: goToText };
                     }
                   } catch { /* skip malformed */ }
                 }
@@ -334,6 +339,21 @@ function stripEmojis(str: string): string {
 /** Insert line breaks before inline numbered items (e.g. "... 2. Foo 3. Bar" → newlines) */
 function formatNumberedItems(str: string): string {
   return str.replace(/(?<!\n)\s+(\d+)\.\s/g, '\n$1. ');
+}
+
+/** Truncate text for voice output at a sentence boundary (mirrors client-side truncateForVoice) */
+function truncateForVoice(text: string, maxLen = 300): string {
+  if (text.length <= maxLen) return text;
+  const truncated = text.slice(0, maxLen);
+  const lastSentence = truncated.lastIndexOf('।') !== -1
+    ? truncated.lastIndexOf('।')
+    : truncated.lastIndexOf('. ') !== -1
+      ? truncated.lastIndexOf('. ')
+      : truncated.lastIndexOf('.');
+  if (lastSentence > maxLen * 0.4) {
+    return text.slice(0, lastSentence + 1).trim();
+  }
+  return truncated.trim() + '...';
 }
 
 const VALID_SEVERITIES = new Set(['emergency', 'urgent', 'routine', 'self_care']);

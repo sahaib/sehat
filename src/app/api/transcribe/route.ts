@@ -60,9 +60,12 @@ export async function POST(request: NextRequest) {
     });
     const sarvamForm = new FormData();
     sarvamForm.append('file', cleanFile, cleanFile.name);
-    sarvamForm.append('model', 'saarika:v2.5');
-    // Use language hint or auto-detect
-    sarvamForm.append('language_code', languageHint || 'unknown');
+    sarvamForm.append('model', 'saaras:v3');
+    sarvamForm.append('mode', 'transcribe');
+    // Use language hint or auto-detect (Saaras v3 supports auto-detection)
+    if (languageHint && languageHint !== 'unknown') {
+      sarvamForm.append('language_code', languageHint);
+    }
 
     const sarvamResponse = await fetch(SARVAM_STT_URL, {
       method: 'POST',

@@ -454,9 +454,10 @@ function Home() {
                 case 'follow_up':
                   break;
                 case 'early_tts':
-                  // Ignored — early_tts text can differ slightly from final parsed result
-                  // (due to clean() in parseTriageResult), causing cache key mismatch and
-                  // duplicate TTS requests. The result-event prewarm is sufficient.
+                  // Voice mode now speaks go_to + first_aid (card content).
+                  // early_tts only has go_to — cache key won't match the full text.
+                  // Skip pre-warm to avoid wasted TTS requests.
+                  // VoiceConversationMode calls streamTTS directly once result arrives.
                   break;
                 case 'tool_call':
                   dispatch({
@@ -508,7 +509,12 @@ function Home() {
   );
 
   const handleTextSubmit = useCallback((text: string) => {
-    inputModeRef.current = 'text';
+    // Preserve voice_conversation inputMode when in voice mode
+    // (e.g., when user taps a follow-up pill during voice session).
+    // This ensures follow-ups use 2K thinking + no tools instead of 10K + 13 tools.
+    if (inputModeRef.current !== 'voice_conversation') {
+      inputModeRef.current = 'text';
+    }
     handleSubmit(text);
   }, [handleSubmit]);
 
@@ -597,22 +603,28 @@ function Home() {
       return truncateForVoice(state.currentResult.follow_up_question);
     }
 
-    // Final result — speak ONLY the reasoning summary, capped for voice
+    // Final result — speak the card content (go_to + first aid), NOT the reasoning_summary.
+    // This matches what the user SEES on the result card.
     if (state.currentResult && (!state.currentResult.needs_follow_up || state.followUpCount >= MAX_FOLLOW_UPS)) {
-      return state.currentResult.reasoning_summary ? truncateForVoice(state.currentResult.reasoning_summary) : null;
+      const parts: string[] = [];
+      if (state.currentResult.action_plan?.go_to) {
+        parts.push(state.currentResult.action_plan.go_to);
+      }
+      if (state.currentResult.action_plan?.first_aid?.length) {
+        parts.push(state.currentResult.action_plan.first_aid.join('. '));
+      }
+      const cardText = parts.join('. ');
+      return cardText ? truncateForVoice(cardText, 600) : null;
     }
 
     return null;
   }, [isVoiceMode, state.isThinking, state.currentResult, state.followUpCount]);
 
-  // Pre-warm TTS for follow-up questions (voice mode will need them)
-  useEffect(() => {
-    if (voiceTextToSpeak && isVoiceMode) {
-      const langConfig = SUPPORTED_LANGUAGES.find((l) => l.code === state.language);
-      const speechCode = langConfig?.speechCode || 'en-IN';
-      prewarmTTS(voiceTextToSpeak, speechCode);
-    }
-  }, [voiceTextToSpeak, isVoiceMode, state.language]);
+  // TTS pre-warming for voice mode is handled by two paths:
+  // 1. early_tts event during SSE streaming (fires before result, overlaps with Claude)
+  // 2. VoiceConversationMode calls streamTTS directly when textToSpeak prop changes
+  // No useEffect prewarm here — it would fire AFTER VoiceConversationMode's streamTTS
+  // (React parent effects run after child effects), causing duplicate TTS requests.
 
   // Reset voice text tracking when entering voice mode
   useEffect(() => {
