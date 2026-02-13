@@ -69,6 +69,7 @@ const TOOL_LABELS: Record<string, { label: string; description: string }> = {
   save_clinical_note: { label: 'Saving note', description: 'Recording clinical observation' },
   schedule_followup_check: { label: 'Follow-up reminder', description: 'Scheduling follow-up check' },
   update_risk_profile: { label: 'Risk profile', description: 'Updating patient risk profile' },
+  find_nearby_hospitals: { label: 'Nearby hospitals', description: 'Finding healthcare facilities near you' },
 };
 
 function getToolSummary(name: string, result: Record<string, unknown> | null): string | null {
@@ -144,8 +145,22 @@ function getToolSummary(name: string, result: Record<string, unknown> | null): s
   }
 }
 
+// Detect if thinking content indicates a non-medical / simple facility query
+const NON_MEDICAL_PATTERN = /non.?medical|not.?(?:a\s+)?medical|is_medical_query.*false|no\s+(?:clinical|medical)\s+(?:reasoning|triage)|facility\s+(?:request|query)|location.*query|nearby.*(?:clinic|hospital).*request/i;
+
 function detectActiveSteps(content: string, toolSteps: ToolStep[]): Map<string, 'completed' | 'active'> {
   const result = new Map<string, 'completed' | 'active'>();
+
+  // If thinking suggests non-medical or simple facility query, skip triage steps
+  // Only show tool-retrieval steps if tools are being used
+  if (NON_MEDICAL_PATTERN.test(content)) {
+    if (toolSteps.length > 0) {
+      const allDone = toolSteps.every((t) => t.status === 'done');
+      result.set('context', allDone ? 'completed' : 'active');
+    }
+    return result;
+  }
+
   let lastMatch = -1;
 
   for (let i = 0; i < STEP_DEFINITIONS.length; i++) {
@@ -252,8 +267,12 @@ export default function ThinkingDisplay({
           {isThinking
             ? toolSteps.some(s => s.status === 'running')
               ? 'Opus 4.6 agentic analysis'
-              : 'Opus 4.6 medical analysis'
-            : `AI reasoning (${completedCount} steps${toolSteps.length > 0 ? ` + ${toolSteps.length} tools` : ''})`
+              : completedCount === 0
+                ? 'Opus 4.6 processing'
+                : 'Opus 4.6 medical analysis'
+            : completedCount === 0 && toolSteps.length > 0
+              ? `AI lookup (${toolSteps.length} tool${toolSteps.length > 1 ? 's' : ''})`
+              : `AI reasoning (${completedCount} steps${toolSteps.length > 0 ? ` + ${toolSteps.length} tools` : ''})`
           }
         </span>
 
@@ -425,8 +444,10 @@ export default function ThinkingDisplay({
       {!isThinking && content && !isExpanded && (
         <div className="flex items-center gap-2 text-xs text-purple-400">
           <span>
-            {completedCount}/{STEP_DEFINITIONS.length} analysis steps completed
-            {toolSteps.length > 0 && ` + ${toolSteps.length} tool${toolSteps.length > 1 ? 's' : ''} used`}
+            {completedCount === 0 && toolSteps.length > 0
+              ? `${toolSteps.length} tool${toolSteps.length > 1 ? 's' : ''} used`
+              : `${completedCount}/${STEP_DEFINITIONS.length} analysis steps completed${toolSteps.length > 0 ? ` + ${toolSteps.length} tool${toolSteps.length > 1 ? 's' : ''} used` : ''}`
+            }
           </span>
         </div>
       )}
