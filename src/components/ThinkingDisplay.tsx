@@ -140,6 +140,11 @@ function getToolSummary(name: string, result: Record<string, unknown> | null): s
       const count = result.conditions_merged as number;
       return `Profile updated (${count} condition${count !== 1 ? 's' : ''})`;
     }
+    case 'find_nearby_hospitals': {
+      const hospitals = result.hospitals as unknown[];
+      if (!hospitals?.length) return result.note as string || 'No facilities found — using Maps link';
+      return `${hospitals.length} hospital${hospitals.length > 1 ? 's' : ''} found nearby`;
+    }
     default:
       return null;
   }

@@ -74,6 +74,7 @@ const initialState: ConversationState = {
   error: null,
   toolSteps: [],
   nearbyHospitals: [],
+  hospitalsFallbackUrl: null,
 };
 
 function conversationReducer(
@@ -132,6 +133,7 @@ function conversationReducer(
         error: null,
         toolSteps: [],
         nearbyHospitals: [],
+        hospitalsFallbackUrl: null,
       };
 
     case 'STREAM_THINKING':
@@ -177,12 +179,19 @@ function conversationReducer(
     case 'STREAM_TOOL_RESULT': {
       // Capture nearby hospitals from the find_nearby_hospitals tool
       let hospitals = state.nearbyHospitals;
-      if (action.name === 'find_nearby_hospitals' && Array.isArray(action.result?.hospitals)) {
-        hospitals = action.result.hospitals as ConversationState['nearbyHospitals'];
+      let fallbackUrl = state.hospitalsFallbackUrl;
+      if (action.name === 'find_nearby_hospitals') {
+        if (Array.isArray(action.result?.hospitals)) {
+          hospitals = action.result.hospitals as ConversationState['nearbyHospitals'];
+        }
+        if (typeof action.result?.fallback_url === 'string') {
+          fallbackUrl = action.result.fallback_url;
+        }
       }
       return {
         ...state,
         nearbyHospitals: hospitals,
+        hospitalsFallbackUrl: fallbackUrl,
         toolSteps: state.toolSteps.map((step) =>
           step.name === action.name && step.status === 'running'
             ? { ...step, result: action.result, status: 'done' as const }
@@ -987,9 +996,33 @@ function Home() {
           )}
 
         {/* Standalone nearby hospitals — shown when tool found hospitals but no final result card is visible */}
-        {!showResult && state.nearbyHospitals.length > 0 && (
+        {!showResult && (state.nearbyHospitals.length > 0 || state.hospitalsFallbackUrl) && (
           <div className="animate-fade-in">
-            <NearbyHospitals hospitals={state.nearbyHospitals} />
+            {state.nearbyHospitals.length > 0 ? (
+              <NearbyHospitals hospitals={state.nearbyHospitals} />
+            ) : state.hospitalsFallbackUrl && (
+              <a
+                href={state.hospitalsFallbackUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-4 rounded-2xl border border-teal-200/60 bg-white/70 backdrop-blur-sm
+                           hover:bg-teal-50/80 hover:border-teal-300 transition-all group"
+              >
+                <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-teal-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-800">Open Google Maps</p>
+                  <p className="text-xs text-gray-500">Search for hospitals and clinics near you</p>
+                </div>
+                <svg className="w-4 h-4 text-gray-400 group-hover:text-teal-600 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                </svg>
+              </a>
+            )}
           </div>
         )}
 

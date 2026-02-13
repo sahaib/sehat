@@ -129,6 +129,7 @@ export interface ConversationState {
   error: string | null;
   toolSteps: ToolStep[];
   nearbyHospitals: NearbyHospital[];
+  hospitalsFallbackUrl: string | null;
 }
 
 export type ConversationAction =
