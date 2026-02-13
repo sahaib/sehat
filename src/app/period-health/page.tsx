@@ -193,7 +193,7 @@ export default function PeriodHealthPage() {
   const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem('sehat_language');
+    const saved = localStorage.getItem('sehat_preferred_language') || localStorage.getItem('sehat_language');
     if (saved) setLanguage(saved as Language);
   }, []);
 
