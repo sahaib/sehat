@@ -2,7 +2,7 @@
 
 **Builder:** Sahaib Singh Arora (solo)
 **Hackathon:** Built with Opus 4.6 — Claude Code Hackathon (Feb 10-16, 2026)
-**Total:** 65 commits, ~12,500 lines of TypeScript, 69 source files, 4 days of development
+**Total:** 69 commits, ~12,800 lines of TypeScript, 69 source files, 4 days of development
 
 ---
 
@@ -291,6 +291,31 @@ The period health page had its own custom `NavHeader` and no mobile bottom nav. 
 
 ---
 
+## v1.0 — Preferred Language + Analytics (Feb 13)
+
+**What changed:**
+
+### Preferred Language in Profile
+Users can now set their preferred language in their health profile. The entire site loads in that language for returning users — no more defaulting to Hindi every time.
+
+- **Language picker in ProfileForm**: 7 pill buttons with native script labels (हिन्दी, English, தமிழ், తెలుగు, मराठी, ಕನ್ನಡ, বাংলা), same visual style as gender selector
+- **Dual persistence**: saved to Supabase (via `/api/profile`) AND cached in `localStorage('sehat_preferred_language')` for instant load without API roundtrip
+- **Main page mount**: reads localStorage first; if empty (first visit on device), fetches `/api/profile` to get saved preference, caches it, and applies
+- **ProfileForm load sync**: when the profile form fetches existing data, it also writes `preferred_language` to localStorage — so even opening the form once populates the cache
+- **Profile close callback**: if user changes language in profile, the main page immediately switches without page reload
+- **Triage agent context**: `buildPatientContext()` now includes `Preferred language: X` in the patient context sent to Claude
+
+**Infrastructure was already 99% done** — the `preferred_language` column existed in Supabase, the TypeScript type had the field, and the API route accepted it. The missing pieces were: UI picker, localStorage caching, mount-time loading, and cross-page sync.
+
+**Period health fix**: page was reading from stale `sehat_language` localStorage key instead of `sehat_preferred_language`.
+
+### Vercel Web Analytics
+Added `@vercel/analytics` for production usage tracking.
+
+**Files changed:** 4 (`ProfileForm.tsx`, `page.tsx`, `period-health/page.tsx`, `triage-agent.ts`, `layout.tsx`)
+
+---
+
 ## Architecture Evolution
 
 ```
@@ -303,6 +328,7 @@ v0.6: Security hardened, clinically audited, voice optimized
 v0.7: 13 agentic tools (read+write), interactive follow-up pills, profile-aware personalization
 v0.8: Clinical UI overhaul — SehatOrb, AppShell, design tokens, visual hierarchy
 v0.9: Voice-first hero, full-width layout fix, period health → AppShell
+v1.0: Preferred language in profile, Vercel analytics, cross-page language sync
 ```
 
 ## Prompt Evolution
@@ -321,8 +347,8 @@ The system prompt went through 6 major revisions:
 
 ## Key Metrics
 
-- **65 commits** over 4 days
-- **~12,500 lines** of TypeScript
+- **69 commits** over 4 days
+- **~12,800 lines** of TypeScript
 - **69 source files** across 12 API routes, 21 components, 7 pages
 - **13 agentic tools** (10 read + 3 write) with multi-turn tool-use loop
 - **7 Indian languages** with code-mixing support
