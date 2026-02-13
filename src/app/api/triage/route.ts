@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: TriageRequest = await request.json();
-    const { message, conversationHistory, sessionId: rawSessionId, inputMode } = body;
+    const { message, conversationHistory, sessionId: rawSessionId, inputMode, location } = body;
     const clerkUserId = await getClerkUserId();
 
     // Fetch patient profile for personalization (non-blocking — null if unavailable)
@@ -135,7 +135,8 @@ export async function POST(request: NextRequest) {
             (inputMode as 'text' | 'voice' | 'voice_conversation') || 'text',
             clerkUserId,
             sessionId,
-            patientProfile
+            patientProfile,
+            location || null
           )) {
             send(event);
 

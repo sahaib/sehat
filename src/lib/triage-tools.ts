@@ -16,6 +16,7 @@ import { getServiceClient } from './supabase';
 export interface ToolContext {
   clerkUserId: string | null;
   sessionId?: string | null;
+  location?: { lat: number; lng: number } | null;
 }
 
 type ToolHandler = (
@@ -141,6 +142,27 @@ export const TRIAGE_TOOLS: Anthropic.Tool[] = [
         },
       },
       required: ['specialist', 'severity'],
+    },
+  },
+
+  {
+    name: 'find_nearby_hospitals',
+    description:
+      'Find real hospitals and clinics near the patient\'s current location using map data. Use this when recommending a hospital, clinic, or PHC visit — it returns actual facility names, distances, and Google Maps directions. Only call this if the patient\'s location is available (the system will tell you).',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        care_level: {
+          type: 'string',
+          enum: ['phc', 'clinic', 'hospital', 'emergency'],
+          description: 'Type of facility needed based on triage severity',
+        },
+        radius_km: {
+          type: 'number',
+          description: 'Search radius in kilometers (default 10, max 50)',
+        },
+      },
+      required: ['care_level'],
     },
   },
 
@@ -1171,6 +1193,90 @@ const handlers: Record<string, ToolHandler> = {
     return { risk_score: score, risk_factors: riskFactors, recommendation };
   },
 
+  find_nearby_hospitals: async (input, ctx) => {
+    if (!ctx.location) {
+      return {
+        hospitals: [],
+        note: 'Location not available. Recommend patient search Google Maps for nearest hospital.',
+        fallback_url: 'https://www.google.com/maps/search/hospital+near+me',
+      };
+    }
+
+    const { lat, lng } = ctx.location;
+    const careLevel = (input.care_level as string) || 'hospital';
+    const radiusKm = Math.min(typeof input.radius_km === 'number' ? input.radius_km : 10, 50);
+    const radiusMeters = radiusKm * 1000;
+
+    // Map care_level to OSM amenity tags
+    const amenityFilter = careLevel === 'phc' || careLevel === 'clinic'
+      ? '["amenity"~"clinic|doctors"]'
+      : '["amenity"~"hospital|clinic"]';
+
+    const query = `[out:json][timeout:10];(node${amenityFilter}(around:${radiusMeters},${lat},${lng});way${amenityFilter}(around:${radiusMeters},${lat},${lng}););out center body 20;`;
+
+    try {
+      const response = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        body: `data=${encodeURIComponent(query)}`,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        signal: AbortSignal.timeout(8000),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Overpass API returned ${response.status}`);
+      }
+
+      const data = await response.json();
+      const elements = (data.elements || []) as Array<Record<string, unknown>>;
+
+      const hospitals = elements
+        .map((el) => {
+          const elLat = (el.lat as number) ?? (el.center as Record<string, number>)?.lat;
+          const elLng = (el.lon as number) ?? (el.center as Record<string, number>)?.lon;
+          const tags = (el.tags || {}) as Record<string, string>;
+          const name = tags.name || tags['name:en'] || 'Unnamed facility';
+
+          if (!elLat || !elLng) return null;
+
+          const distance = haversineDistance(lat, lng, elLat, elLng);
+          const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${elLat},${elLng}`;
+
+          return {
+            name,
+            distance_km: Math.round(distance * 10) / 10,
+            type: tags.amenity === 'clinic' || tags.amenity === 'doctors' ? 'clinic' : 'hospital',
+            address: tags['addr:full'] || tags['addr:street'] || undefined,
+            phone: tags.phone || tags['contact:phone'] || undefined,
+            maps_url: mapsUrl,
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => (a as { distance_km: number }).distance_km - (b as { distance_km: number }).distance_km)
+        .slice(0, 5);
+
+      if (hospitals.length === 0) {
+        return {
+          hospitals: [],
+          note: 'No facilities found nearby via map data.',
+          fallback_url: `https://www.google.com/maps/search/${encodeURIComponent(
+            careLevel === 'phc' || careLevel === 'clinic' ? 'clinic near me' : 'hospital near me'
+          )}/@${lat},${lng},13z`,
+        };
+      }
+
+      return { hospitals, total_found: elements.length };
+    } catch (error) {
+      console.error('[triage-tools] find_nearby_hospitals error:', error);
+      return {
+        hospitals: [],
+        note: 'Could not fetch nearby facilities. Use the link below to search.',
+        fallback_url: `https://www.google.com/maps/search/${encodeURIComponent(
+          careLevel === 'phc' || careLevel === 'clinic' ? 'clinic near me' : 'hospital near me'
+        )}/@${lat},${lng},13z`,
+      };
+    }
+  },
+
   // ── Action Tools (write data) ──
 
   save_clinical_note: async (input, ctx) => {
@@ -1305,6 +1411,19 @@ export async function executeTriageTool(
 }
 
 // ─── Helpers ─────────────────────────────────────────
+
+/** Calculate distance between two lat/lng points in kilometers (Haversine formula) */
+function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 function getSeasonName(month: number): string {
   if (month >= 3 && month <= 5) return 'Summer (Grishma)';

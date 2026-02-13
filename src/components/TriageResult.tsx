@@ -1,13 +1,15 @@
 'use client';
 
-import { TriageResult as TriageResultType, Severity, Language } from '@/types';
+import { TriageResult as TriageResultType, Severity, Language, NearbyHospital } from '@/types';
 import { SEVERITY_CONFIG, URGENCY_LABELS, SUPPORTED_LANGUAGES } from '@/lib/constants';
 import ReadAloudButton from './ReadAloudButton';
+import NearbyHospitals from './NearbyHospitals';
 import { inlineFormat } from './RenderMarkdown';
 
 interface TriageResultProps {
   result: TriageResultType;
   language?: Language;
+  nearbyHospitals?: NearbyHospital[];
 }
 
 const SEVERITY_DOT_COLORS: Record<Severity, string> = {
@@ -48,7 +50,7 @@ function ConfidenceBar({ confidence }: { confidence: number }) {
   );
 }
 
-export default function TriageResult({ result, language }: TriageResultProps) {
+export default function TriageResult({ result, language, nearbyHospitals }: TriageResultProps) {
   const config = SEVERITY_CONFIG[result.severity];
   const urgencyLabel = URGENCY_LABELS[result.action_plan.urgency] || result.action_plan.urgency;
 
@@ -116,6 +118,11 @@ export default function TriageResult({ result, language }: TriageResultProps) {
           </div>
         )}
       </div>
+
+      {/* Nearby hospitals */}
+      {nearbyHospitals && nearbyHospitals.length > 0 && (
+        <NearbyHospitals hospitals={nearbyHospitals} />
+      )}
 
       {/* First aid */}
       {result.action_plan.first_aid.length > 0 && (

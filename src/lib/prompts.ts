@@ -106,6 +106,7 @@ You have access to tools that provide additional context for better triage decis
 - Symptoms could be period-related for female patients — call \`get_period_health_context\`
 - Fever/body ache/seasonal symptoms — call \`check_regional_disease_alerts\` with the current month
 - Care level is district_hospital or emergency — call \`get_indian_health_schemes\`
+- You are recommending a hospital/clinic visit AND patient location is available — call \`find_nearby_hospitals\` to provide actual facility names with Google Maps directions
 - You have enough context to quantify risk — call \`calculate_risk_score\`
 
 **WHEN NOT to use tools (simple cases):**

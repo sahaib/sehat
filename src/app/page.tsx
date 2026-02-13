@@ -11,6 +11,7 @@ import {
   Message,
   Language,
   TriageResult as TriageResultType,
+  FollowUpOption,
 } from '@/types';
 import { detectEmergency } from '@/lib/emergency-detector';
 import { MAX_FOLLOW_UPS, SUPPORTED_LANGUAGES } from '@/lib/constants';
@@ -71,6 +72,7 @@ const initialState: ConversationState = {
   emergencyData: null,
   error: null,
   toolSteps: [],
+  nearbyHospitals: [],
 };
 
 function conversationReducer(
@@ -89,11 +91,34 @@ function conversationReducer(
         timestamp: Date.now(),
         language: state.language,
       };
+
+      // If there's a final result, archive it into messages as an inline card
+      // so it persists in the conversation thread after the user continues chatting.
+      let updatedMessages = [...state.messages];
+      if (state.currentResult) {
+        const isFinal = !state.currentResult.needs_follow_up ||
+          state.followUpCount >= MAX_FOLLOW_UPS;
+        const alreadyEmbedded = updatedMessages.some(m => m.triageResult != null);
+        if (isFinal && !alreadyEmbedded) {
+          const summary = state.currentResult.is_medical_query === false
+            ? (state.currentResult.redirect_message || '')
+            : `[Previous Triage] Severity: ${state.currentResult.severity} | Advice: ${state.currentResult.action_plan?.go_to || ''}`;
+          updatedMessages.push({
+            id: generateId(),
+            role: 'assistant',
+            content: summary,
+            timestamp: Date.now() - 1,
+            triageResult: state.currentResult,
+          });
+        }
+      }
+
       return {
         ...state,
-        messages: [...state.messages, msg],
+        messages: [...updatedMessages, msg],
         error: null,
         currentResult: null,
+        nearbyHospitals: [],
       };
     }
 
@@ -105,6 +130,7 @@ function conversationReducer(
         thinkingContent: '',
         error: null,
         toolSteps: [],
+        nearbyHospitals: [],
       };
 
     case 'STREAM_THINKING':
@@ -147,15 +173,22 @@ function conversationReducer(
         toolSteps: [...state.toolSteps, { name: action.name, input: action.input, result: null, status: 'running' }],
       };
 
-    case 'STREAM_TOOL_RESULT':
+    case 'STREAM_TOOL_RESULT': {
+      // Capture nearby hospitals from the find_nearby_hospitals tool
+      let hospitals = state.nearbyHospitals;
+      if (action.name === 'find_nearby_hospitals' && Array.isArray(action.result?.hospitals)) {
+        hospitals = action.result.hospitals as ConversationState['nearbyHospitals'];
+      }
       return {
         ...state,
+        nearbyHospitals: hospitals,
         toolSteps: state.toolSteps.map((step) =>
           step.name === action.name && step.status === 'running'
             ? { ...step, result: action.result, status: 'done' as const }
             : step
         ),
       };
+    }
 
     case 'STREAM_EMERGENCY':
       return {
@@ -187,10 +220,24 @@ function conversationReducer(
       const restoredFollowUps = action.messages.filter(
         (m) => m.role === 'assistant' && m.isFollowUp
       ).length;
+
+      // If a result exists and isn't already embedded in messages, embed it
+      const restoredMessages = [...action.messages];
+      const hasEmbeddedResult = restoredMessages.some(m => m.triageResult != null);
+      if (action.result && !hasEmbeddedResult) {
+        restoredMessages.push({
+          id: generateId(),
+          role: 'assistant',
+          content: `[Previous Triage] Severity: ${action.result.severity} | Advice: ${action.result.action_plan?.go_to || ''}`,
+          timestamp: Date.now() - 1,
+          triageResult: action.result,
+        });
+      }
+
       return {
         ...initialState,
         sessionId: action.sessionId,
-        messages: action.messages,
+        messages: restoredMessages,
         currentResult: action.result,
         thinkingContent: action.thinkingContent,
         language: action.language,
@@ -232,6 +279,8 @@ function Home() {
   const [showProfileForm, setShowProfileForm] = useState(false);
   const [userName, setUserName] = useState('');
   const [resumedDate, setResumedDate] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const locationRequestedRef = useRef(false);
   const searchParams = useSearchParams();
 
   // Listen for Clerk name sync (fires when ClerkAuthButtons writes firstName to localStorage)
@@ -334,6 +383,17 @@ function Home() {
   const followUpCountRef = useRef(state.followUpCount);
   followUpCountRef.current = state.followUpCount;
 
+  // Request geolocation (non-blocking, once per session)
+  const requestLocation = useCallback(() => {
+    if (locationRequestedRef.current || !('geolocation' in navigator)) return;
+    locationRequestedRef.current = true;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => { /* denied or error — continue without location */ },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+    );
+  }, []);
+
   // Cleanup abort controller on unmount
   useEffect(() => {
     return () => {
@@ -353,6 +413,9 @@ function Home() {
 
   const handleSubmit = useCallback(
     async (text: string) => {
+      // Request location on first interaction (non-blocking)
+      requestLocation();
+
       // Client-side emergency detection (Layer 1)
       const emergencyCheck = detectEmergency(text, state.language);
       if (emergencyCheck.isEmergency) {
@@ -382,6 +445,7 @@ function Home() {
             conversationHistory: state.messages,
             sessionId: state.sessionId,
             inputMode: inputModeRef.current,
+            location: userLocation,
           }),
           signal: controller.signal,
         });
@@ -505,7 +569,7 @@ function Home() {
         }
       }
     },
-    [state.language, state.messages, state.sessionId]
+    [state.language, state.messages, state.sessionId, userLocation, requestLocation]
   );
 
   const handleTextSubmit = useCallback((text: string) => {
@@ -642,6 +706,45 @@ function Home() {
     kn: ['ತಲೆನೋವು', 'ಜ್ವರ ಮತ್ತು ಕೆಮ್ಮು', 'ಹೊಟ್ಟೆ ನೋವು'],
     bn: ['মাথাব্যথা', 'জ্বর এবং কাশি', 'পেটে ব্যথা'],
     en: ['Headache', 'Fever and cough', 'Stomach pain'],
+  };
+
+  // Post-result follow-up pills — encourage continued conversation
+  const POST_RESULT_OPTIONS: Record<Language, FollowUpOption[]> = {
+    hi: [
+      { label: 'और बताएं', value: 'Tell me more about my condition and what to watch for' },
+      { label: 'अब कैसा लग रहा', value: 'I want to share how I am feeling now' },
+      { label: 'और सावधानी', value: 'What other precautions should I take' },
+    ],
+    ta: [
+      { label: 'மேலும் சொல்லுங்கள்', value: 'Tell me more about my condition and what to watch for' },
+      { label: 'இப்போது எப்படி', value: 'I want to share how I am feeling now' },
+      { label: 'மேலும் முன்னெச்சரிக்கை', value: 'What other precautions should I take' },
+    ],
+    te: [
+      { label: 'మరింత చెప్పండి', value: 'Tell me more about my condition and what to watch for' },
+      { label: 'ఇప్పుడు ఎలా ఉంది', value: 'I want to share how I am feeling now' },
+      { label: 'మరిన్ని జాగ్రత్తలు', value: 'What other precautions should I take' },
+    ],
+    mr: [
+      { label: 'अजून सांगा', value: 'Tell me more about my condition and what to watch for' },
+      { label: 'आता कसे वाटते', value: 'I want to share how I am feeling now' },
+      { label: 'अजून काळजी', value: 'What other precautions should I take' },
+    ],
+    kn: [
+      { label: 'ಇನ್ನಷ್ಟು ಹೇಳಿ', value: 'Tell me more about my condition and what to watch for' },
+      { label: 'ಈಗ ಹೇಗಿದೆ', value: 'I want to share how I am feeling now' },
+      { label: 'ಇನ್ನಷ್ಟು ಮುನ್ನೆಚ್ಚರಿಕೆ', value: 'What other precautions should I take' },
+    ],
+    bn: [
+      { label: 'আরও বলুন', value: 'Tell me more about my condition and what to watch for' },
+      { label: 'এখন কেমন লাগছে', value: 'I want to share how I am feeling now' },
+      { label: 'আরও সতর্কতা', value: 'What other precautions should I take' },
+    ],
+    en: [
+      { label: 'Tell me more', value: 'Tell me more about my condition and what to watch for' },
+      { label: 'How I feel now', value: 'I want to share how I am feeling now' },
+      { label: 'More precautions', value: 'What other precautions should I take' },
+    ],
   };
 
   return (
@@ -903,7 +1006,7 @@ function Home() {
             </div>
           ) : (
             <>
-              <TriageResult result={state.currentResult} language={state.language} />
+              <TriageResult result={state.currentResult} language={state.language} nearbyHospitals={state.nearbyHospitals} />
               <DoctorSummary
                 summary={state.currentResult.action_plan.tell_doctor}
                 severity={state.currentResult.severity}
@@ -911,6 +1014,21 @@ function Home() {
                 result={state.currentResult}
                 language={state.language}
               />
+              {/* Post-result continue options */}
+              <div className="flex flex-wrap gap-2 mt-1 animate-fade-in">
+                {(POST_RESULT_OPTIONS[state.language] || POST_RESULT_OPTIONS['en']).map((opt, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleTextSubmit(opt.value)}
+                    disabled={isInputDisabled}
+                    className="px-4 py-2 text-sm font-medium rounded-full border border-teal-200/80
+                               bg-white/70 backdrop-blur-sm text-teal-700 hover:bg-teal-50 hover:border-teal-300
+                               transition-all duration-200 active:scale-95 disabled:opacity-50"
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
               <FileUpload language={state.language} disabled={isInputDisabled} />
               {(state.currentResult.severity === 'routine' || state.currentResult.severity === 'self_care') && (
                 <SignUpPrompt

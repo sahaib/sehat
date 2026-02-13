@@ -20,7 +20,11 @@ function isRetryableError(error: unknown): boolean {
 }
 
 /** Build a patient context preamble from stored profile data */
-function buildPatientContext(profile: PatientProfile, languageLabel: string): string {
+function buildPatientContext(
+  profile: PatientProfile,
+  languageLabel: string,
+  location?: { lat: number; lng: number } | null
+): string {
   const parts: string[] = [];
 
   if (profile.name) parts.push(`Name: ${profile.name}`);
@@ -30,6 +34,7 @@ function buildPatientContext(profile: PatientProfile, languageLabel: string): st
     parts.push(`Known pre-existing conditions: ${profile.pre_existing_conditions.join(', ')}`);
   }
   if (profile.preferred_language) parts.push(`Preferred language: ${profile.preferred_language}`);
+  if (location) parts.push(`Location available: Yes (lat: ${location.lat.toFixed(4)}, lng: ${location.lng.toFixed(4)}) — call find_nearby_hospitals when recommending a visit`);
 
   if (parts.length === 0) return '';
 
@@ -47,7 +52,8 @@ export async function* streamTriage(
   inputMode?: 'text' | 'voice' | 'voice_conversation',
   clerkUserId?: string | null,
   sessionId?: string | null,
-  patientProfile?: PatientProfile | null
+  patientProfile?: PatientProfile | null,
+  location?: { lat: number; lng: number } | null
 ): AsyncGenerator<StreamEvent> {
   const languageLabel = getLanguageLabel(language);
   const sanitizedHistory = sanitizeConversationHistory(conversationHistory);
@@ -69,7 +75,7 @@ export async function* streamTriage(
     content: `${injectionWarning}<user_message>${cleanMessage}</user_message>`,
   });
 
-  const toolCtx: ToolContext = { clerkUserId: clerkUserId ?? null, sessionId: sessionId ?? null };
+  const toolCtx: ToolContext = { clerkUserId: clerkUserId ?? null, sessionId: sessionId ?? null, location: location ?? null };
 
   // Retry loop for transient API errors
   let lastError: unknown = null;
@@ -93,7 +99,7 @@ export async function* streamTriage(
         const useTools = !isVoiceConversation && toolRound < MAX_TOOL_ROUNDS;
 
         const baseSystemPrompt = buildSystemPrompt(language, languageLabel);
-        const patientContext = patientProfile ? buildPatientContext(patientProfile, languageLabel) : '';
+        const patientContext = patientProfile ? buildPatientContext(patientProfile, languageLabel, location) : (location ? `\n\n## LOCATION\nPatient location available (lat: ${location.lat.toFixed(4)}, lng: ${location.lng.toFixed(4)}). Call find_nearby_hospitals when recommending a hospital visit.` : '');
 
         // Use cache_control to cache the static system prompt and tools across requests.
         // The base system prompt (~3K tokens) is stable — caching it cuts TTFT by 30-50%.

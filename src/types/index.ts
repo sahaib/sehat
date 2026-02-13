@@ -19,6 +19,7 @@ export interface Message {
   language?: Language;
   isFollowUp?: boolean;
   followUpOptions?: FollowUpOption[] | null;
+  triageResult?: TriageResult | null;
 }
 
 export interface DoctorSummary {
@@ -66,12 +67,27 @@ export interface EmergencyDetection {
   detectedLanguage?: Language;
 }
 
+export interface GeoLocation {
+  lat: number;
+  lng: number;
+}
+
+export interface NearbyHospital {
+  name: string;
+  distance_km: number;
+  type: 'hospital' | 'clinic' | 'phc' | 'chc';
+  address?: string;
+  phone?: string;
+  maps_url: string;
+}
+
 export interface TriageRequest {
   message: string;
   language: Language;
   conversationHistory: Message[];
   sessionId: string;
   inputMode?: 'text' | 'voice' | 'voice_conversation';
+  location?: GeoLocation | null;
 }
 
 export interface TranscribeResponse {
@@ -112,6 +128,7 @@ export interface ConversationState {
   emergencyData: EmergencyDetection | null;
   error: string | null;
   toolSteps: ToolStep[];
+  nearbyHospitals: NearbyHospital[];
 }
 
 export type ConversationAction =

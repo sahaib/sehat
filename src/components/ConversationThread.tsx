@@ -5,6 +5,7 @@ import { SUPPORTED_LANGUAGES } from '@/lib/constants';
 import ReadAloudButton from './ReadAloudButton';
 import RenderMarkdown from './RenderMarkdown';
 import FollowUpOptions from './FollowUpOptions';
+import InlineTriageCard from './InlineTriageCard';
 
 interface ConversationThreadProps {
   messages: Message[];
@@ -35,6 +36,11 @@ export default function ConversationThread({
               <p className="whitespace-pre-wrap text-base leading-relaxed">
                 {msg.content}
               </p>
+            </div>
+          ) : msg.triageResult ? (
+            /* Inline triage result card — archived from a previous triage */
+            <div className="w-full max-w-lg">
+              <InlineTriageCard result={msg.triageResult} language={language} />
             </div>
           ) : (
             <div className="chat-bubble chat-bubble-assistant">
