@@ -93,10 +93,10 @@ export async function* streamTriage(
       const agentMessages: Anthropic.MessageParam[] = [...messages];
 
       while (toolRound <= MAX_TOOL_ROUNDS) {
-        // Voice conversation mode skips tools entirely for speed (~1-5s faster).
-        // Tools still available for text mode and single voice submissions.
-        const isVoiceConversation = inputMode === 'voice_conversation';
-        const useTools = !isVoiceConversation && toolRound < MAX_TOOL_ROUNDS;
+        // Voice modes skip tools entirely for speed (~3-8s faster).
+        // Tools are only used in text mode where latency is acceptable.
+        const isVoiceMode = inputMode === 'voice' || inputMode === 'voice_conversation';
+        const useTools = !isVoiceMode && toolRound < MAX_TOOL_ROUNDS;
 
         const baseSystemPrompt = buildSystemPrompt(language, languageLabel);
         const patientContext = patientProfile ? buildPatientContext(patientProfile, languageLabel, location) : (location ? `\n\n## LOCATION\nPatient location available (lat: ${location.lat.toFixed(4)}, lng: ${location.lng.toFixed(4)}). Call find_nearby_hospitals when recommending a hospital visit.` : '');

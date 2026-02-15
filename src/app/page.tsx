@@ -547,10 +547,14 @@ function Home() {
                 case 'follow_up':
                   break;
                 case 'early_tts':
-                  // Voice mode now speaks go_to + first_aid (card content).
-                  // early_tts only has go_to — cache key won't match the full text.
-                  // Skip pre-warm to avoid wasted TTS requests.
-                  // VoiceConversationMode calls streamTTS directly once result arrives.
+                  // Pre-warm TTS with go_to text while Claude is still generating.
+                  // This overlaps TTS synthesis with Claude response, saving ~500-800ms.
+                  // Cache key uses just go_to; when full text plays it re-synthesizes,
+                  // but the Sarvam WS connection is already warm.
+                  if (isVoiceMode && event.content) {
+                    const speechCode = SUPPORTED_LANGUAGES.find(l => l.code === state.language)?.speechCode || 'en-IN';
+                    prewarmTTS(event.content, speechCode);
+                  }
                   break;
                 case 'tool_call':
                   dispatch({
