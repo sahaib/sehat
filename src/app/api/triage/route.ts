@@ -8,6 +8,7 @@ import { validateLanguage, sanitizeMessage, sanitizeConversationHistory } from '
 import { rateLimit, getClientIP } from '@/lib/rate-limit';
 import { getServiceClient } from '@/lib/supabase';
 import { executeTriageTool } from '@/lib/triage-tools';
+import { detectSymptomPattern } from '@/lib/symptom-patterns';
 
 // Fast regex to detect facility-only queries (no symptoms, just asking for nearby hospitals)
 const FACILITY_QUERY_PATTERN = /^(?:nearby|nearest|closest|find|show|where)\s*(?:clinics?|hospitals?|doctors?|phc|health\s*cent[re]+|medical|dispensary|facilities?|healthcare)|(?:clinics?|hospitals?|doctors?|phc|health\s*cent[re]+|dispensary)\s*(?:near(?:by)?|close|around)\s*(?:me|here)?$|^(?:paas|nazdeek|kareeb|najdeeki|aas\s*paas)\s+(?:hospital|clinic|davakhana|aspatal|doctor)|(?:hospital|clinic|davakhana|aspatal|doctor)\s+(?:paas|nazdeek|kareeb|najdeeki|aas\s*paas)/i;
@@ -131,7 +132,7 @@ export async function POST(request: NextRequest) {
             is_follow_up: sanitizedHistory.length > 0,
           });
 
-          // ── Fast path: facility-only queries skip Claude entirely ──
+          // ── Fast path 1: facility-only queries skip Claude entirely ──
           if (FACILITY_QUERY_PATTERN.test(sanitizedMessage.trim()) && sanitizedHistory.length === 0) {
             const toolResult = await executeTriageTool(
               'find_nearby_hospitals',
@@ -166,6 +167,35 @@ export async function POST(request: NextRequest) {
             telemetry.recordTriage(tel);
             controller.close();
             return;
+          }
+
+          // ── Fast path 2: common symptom patterns → instant follow-up (skips Claude for first round) ──
+          if (sanitizedHistory.length === 0) {
+            const patternMatch = detectSymptomPattern(sanitizedMessage, language, false);
+            if (patternMatch) {
+              send({
+                type: 'follow_up',
+                question: patternMatch.followUpQuestion,
+                options: patternMatch.followUpOptions,
+              });
+
+              // Persist follow-up question to DB
+              saveConversationMessage({
+                session_id: sessionId,
+                clerk_user_id: clerkUserId,
+                role: 'assistant',
+                content: patternMatch.followUpQuestion,
+                language,
+                is_follow_up: true,
+              });
+
+              controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+              tel.latencyMs = Date.now() - startTime;
+              tel.isMedicalQuery = true;
+              telemetry.recordTriage(tel);
+              controller.close();
+              return;
+            }
           }
 
           // Stream triage response from Claude (with tool use)

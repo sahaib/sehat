@@ -544,8 +544,15 @@ function Home() {
                   // when text didn't match exactly.
                   break;
                 }
-                case 'follow_up':
+                case 'follow_up': {
+                  const fu = event as unknown as { question: string; options?: FollowUpOption[] };
+                  dispatch({
+                    type: 'STREAM_FOLLOW_UP',
+                    question: fu.question,
+                    options: fu.options || undefined,
+                  });
                   break;
+                }
                 case 'early_tts':
                   // Pre-warm TTS with go_to text while Claude is still generating.
                   // This overlaps TTS synthesis with Claude response, saving ~500-800ms.
