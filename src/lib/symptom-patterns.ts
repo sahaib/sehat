@@ -709,6 +709,38 @@ const SYMPTOM_PATTERNS: SymptomPattern[] = [
   },
 ];
 
+// ─── Context Detection ──────────────────────────────────
+
+/**
+ * Returns true if the message already contains detailed context (duration,
+ * frequency, timing) that would make a canned follow-up redundant.
+ * In that case, skip the pattern matcher and let Claude handle the richer input.
+ */
+function messageHasDetailedContext(message: string): boolean {
+  // Any digit → likely contains duration ("3 days", "2 हफ्ते", "௩ நாள்")
+  if (/\d/.test(message)) return true;
+
+  // English + romanized Hindi/Urdu duration words
+  if (/\b(days?|weeks?|months?|hours?|since|yesterday|ago|last|past|morning|evening|night|din|hafta|mahina|kal|subah|sham|raat|pehle)\b/i.test(message)) return true;
+
+  // Hindi / Marathi
+  if (/(?:दिन|हफ्त|महीन|घंट|कल|सुबह|शाम|रात|पहले|बार)/.test(message)) return true;
+
+  // Tamil
+  if (/(?:நாள|நாட்கள|வாரம|மாதம|மணி|நேற்று|காலை|மாலை)/.test(message)) return true;
+
+  // Telugu
+  if (/(?:రోజు|రోజుల|వారం|నెల|గంట|నిన్న|ఉదయం|సాయంత్రం)/.test(message)) return true;
+
+  // Kannada
+  if (/(?:ದಿನ|ವಾರ|ತಿಂಗಳ|ಗಂಟೆ|ನಿನ್ನೆ|ಬೆಳಿಗ್ಗೆ|ಸಂಜೆ)/.test(message)) return true;
+
+  // Bengali
+  if (/(?:দিন|সপ্তাহ|মাস|ঘণ্টা|গতকাল|সকাল|সন্ধ্যা)/.test(message)) return true;
+
+  return false;
+}
+
 // ─── Matcher ─────────────────────────────────────────
 
 /**
@@ -716,6 +748,7 @@ const SYMPTOM_PATTERNS: SymptomPattern[] = [
  * Returns null if no pattern matches (should proceed to Claude).
  *
  * Only matches on the FIRST message (not follow-ups) to avoid re-triggering.
+ * Also skips if the message already contains context (duration, timing).
  */
 export function detectSymptomPattern(
   message: string,
@@ -724,6 +757,9 @@ export function detectSymptomPattern(
 ): PatternMatch | null {
   // Only match on first message — don't intercept follow-up answers
   if (hasConversationHistory) return null;
+
+  // If the message already has duration/timing context, skip — Claude handles it better
+  if (messageHasDetailedContext(message)) return null;
 
   const lowerMessage = message.toLowerCase();
   const currentMonth = new Date().getMonth() + 1;

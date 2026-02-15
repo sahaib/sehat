@@ -707,6 +707,14 @@ function Home() {
       return truncated.trim() + '...';
     };
 
+    // Follow-up from pre-triage pattern matcher (no currentResult set, only in messages)
+    if (!state.currentResult && state.messages.length > 0) {
+      const lastMsg = state.messages[state.messages.length - 1];
+      if (lastMsg?.role === 'assistant' && lastMsg.isFollowUp) {
+        return truncateForVoice(lastMsg.content);
+      }
+    }
+
     // Non-medical redirect
     if (state.currentResult?.is_medical_query === false) {
       return state.currentResult.redirect_message ? truncateForVoice(state.currentResult.redirect_message) : null;
@@ -732,7 +740,7 @@ function Home() {
     }
 
     return null;
-  }, [isVoiceMode, state.isThinking, state.currentResult, state.followUpCount]);
+  }, [isVoiceMode, state.isThinking, state.currentResult, state.followUpCount, state.messages]);
 
   // TTS pre-warming for voice mode is handled by two paths:
   // 1. early_tts event during SSE streaming (fires before result, overlaps with Claude)
